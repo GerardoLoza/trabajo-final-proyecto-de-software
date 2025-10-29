@@ -1,0 +1,28 @@
+<?php
+
+namespace App\Models;
+
+use CodeIgniter\Model;
+
+class DiagnosticoModel extends Model
+{
+    protected $table            = 'diagnosticos';
+    protected $primaryKey       = 'nombre';
+    protected $returnType       = 'object';
+    protected $useSoftDeletes   = false;
+    protected $allowedFields    = ['nombre', 'descripcion'];
+    protected $useTimestamps    = false;
+    protected $useAutoIncrement = false;
+
+    // Validación
+    protected $validationRules = [
+        'nombre'      => 'required|min_length[3]|max_length[191]',
+        'descripcion' => 'permit_empty|max_length[1000]'
+    ];
+
+    public function getPlanesPorDiagnostico($diagnostico)
+    {
+        $planModel = new PlanModel();
+        return $planModel->where('nombre_diagnostico', $diagnostico)->findAll();
+    }
+}
