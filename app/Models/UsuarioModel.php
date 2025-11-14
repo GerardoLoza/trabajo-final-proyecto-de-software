@@ -35,6 +35,18 @@ class UsuarioModel extends Model
         return $this->where('nombre_rol', 'paciente')->findAll();
     }
 
+    // SELECT * FROM usuarios u
+    // JOIN planes p ON u.id_usuario = p.id_paciente
+    // WHERE p.id_profesional = $idProfesional
+    public function getPacientesPorProfesional($idProfesional){
+        $data = $this->db->table('usuarios u')
+            ->join('planes p', 'u.id_usuario = p.id_paciente')
+            ->where('p.id_profesional', $idProfesional)
+            ->get()
+            ->getResult();
+        return $data;
+    }
+
     public function getProfesionales()
     {
         return $this->where('nombre_rol', 'profesional')->findAll();
