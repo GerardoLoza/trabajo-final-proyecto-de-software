@@ -97,29 +97,201 @@ class DashboardController extends BaseController
         // 2. Obtener datos
         $misPacientes = $usuarioModel->getPacientesPorProfesional($idProfesional);
         $misPlanes    = $planModel->getPlanesPorProfesional($idProfesional);
-        $planesActivos = $planModel->getPlanesActivosPorProfesional($idProfesional);
 
-        // Datos para los formularios (Selects)
-        $todosLosPacientes = $usuarioModel->getPacientes(); // Para poder asignar plan a cualquier paciente
-        $listaDiagnosticos = $diagnosticoModel->findAll();
-        $listaTiposTarea   = $tipoTareaModel->findAll();
+        // --- NUEVO: soporte de filtro por paciente (GET ?paciente=ID) ---
+        $selectedPaciente = $this->request->getGet('paciente') ? (int) $this->request->getGet('paciente') : null;
 
-        // Tareas (Opcional: traer todas o filtrar)
-        $listaTareas = $tareaModel->findAll();
+        // Helper local para calcular KPIs a partir de una lista de planes
+        $calcKpis = function(array $planes) use ($tareaModel) {
+            $planIds = array_map(function($p){ return is_object($p) ? $p->id : $p['id']; }, $planes);
+            $planIds = array_filter($planIds);
+            $k = [
+                'porcentaje_completado' => 0,
+                'tareas_completadas'    => 0,
+                'tareas_pendientes'     => 0,
+                'tareas_por_semana'     => 0,
+                'racha_dias'            => 0,
+                'total_tareas'          => 0
+            ];
 
+            if (empty($planIds)) return $k;
+
+            $tasks = $tareaModel->whereIn('id_plan', $planIds)->findAll();
+            $totalTasks = count($tasks);
+            $completedTasks = 0;
+            $completedDates = [];
+            $sinceDate = date('Y-m-d', strtotime('-28 days'));
+            $tasksLast28 = 0;
+
+            foreach ($tasks as $t) {
+                $estado = is_object($t) ? $t->estado : ($t['estado'] ?? null);
+                $fecha_real = is_object($t) ? ($t->fecha_realizacion ?? null) : ($t['fecha_realizacion'] ?? null);
+                if ($estado === 'Completada' || !empty($fecha_real)) {
+                    $completedTasks++;
+                    $d = $fecha_real ? substr($fecha_real,0,10) : null;
+                    if ($d) $completedDates[$d] = true;
+                    if ($d && $d >= $sinceDate) $tasksLast28++;
+                } else {
+                    if ($fecha_real && substr($fecha_real,0,10) >= $sinceDate) $tasksLast28++;
+                }
+            }
+
+            $k['total_tareas'] = $totalTasks;
+            $k['tareas_completadas'] = $completedTasks;
+            $k['tareas_pendientes'] = max(0, $totalTasks - $completedTasks);
+            $k['porcentaje_completado'] = $totalTasks ? round(($completedTasks / $totalTasks) * 100, 1) : 0;
+            $k['tareas_por_semana'] = round($tasksLast28 / 4, 1);
+
+            // Calcular racha en días consecutivos
+            $streak = 0;
+            $today = new \DateTimeImmutable(date('Y-m-d'));
+            for ($i=0;$i<60;$i++) {
+                $d = $today->sub(new \DateInterval("P{$i}D"))->format('Y-m-d');
+                if (isset($completedDates[$d])) $streak++; else break;
+            }
+            $k['racha_dias'] = $streak;
+
+            return $k;
+        };
+
+        // KPIs generales (todos los planes del profesional)
+        $kpis_general = $calcKpis(is_array($misPlanes) ? $misPlanes : []);
+
+        // KPIs filtrados por paciente (si aplica)
+        $kpis_filtrado = null;
+        if ($selectedPaciente) {
+            $planesFiltrados = array_filter($misPlanes, function($p) use ($selectedPaciente) {
+                $id = is_object($p) ? $p->id_paciente : ($p['id_paciente'] ?? null);
+                return intval($id) === $selectedPaciente;
+            });
+            $kpis_filtrado = $calcKpis(array_values($planesFiltrados));
+        }
+
+        // --- NUEVO: preparar datos para gráficas ---
+        // 1) Serie diaria de completadas últimos 28 días
+        $dailyLabels = [];
+        $dailyCounts = [];
+        for ($i = 27; $i >= 0; $i--) {
+            $d = (new \DateTimeImmutable('today'))->sub(new \DateInterval("P{$i}D"))->format('Y-m-d');
+            $dailyLabels[] = $d;
+            $dailyCounts[$d] = 0;
+        }
+
+        // 2) Agrupar completadas por tipo de tarea
+        $types = $tipoTareaModel->findAll();
+        $typeMap = [];
+        foreach ($types as $t) {
+            $id = is_object($t) ? $t->id_tipo_tarea : ($t['id_tipo_tarea'] ?? null);
+            $name = is_object($t) ? $t->nombre : ($t['nombre'] ?? '');
+            if ($id !== null) $typeMap[$id] = $name;
+        }
+        $typeCounts = array_fill_keys(array_keys($typeMap), 0);
+
+        // 3) Conteo por semana (últimas 4 semanas)
+        $completedWeekCounts = []; // key: ISO week (o-\WW) => count
+
+        // Determinar qué planes usar para las gráficas: si hay filtro por paciente usar esos planes, sino usar todos los planes del profesional
+        $plansForCharts = [];
+        if ($selectedPaciente) {
+            $plansForCharts = isset($planesFiltrados) ? array_values($planesFiltrados) : array_filter($misPlanes, function($p) use ($selectedPaciente) {
+                $id = is_object($p) ? $p->id_paciente : ($p['id_paciente'] ?? null);
+                return intval($id) === $selectedPaciente;
+            });
+        } else {
+            $plansForCharts = is_array($misPlanes) ? $misPlanes : [];
+        }
+
+        $planIds = array_map(function($p){ return is_object($p) ? $p->id : ($p['id'] ?? null); }, $plansForCharts);
+        $planIds = array_filter($planIds);
+
+        $tasks = [];
+        if (!empty($planIds)) {
+            $tasks = $tareaModel->whereIn('id_plan', $planIds)->findAll();
+            foreach ($tasks as $t) {
+                $fecha = is_object($t) ? ($t->fecha_realizacion ?? $t->fecha_programada ?? null) : ($t['fecha_realizacion'] ?? $t['fecha_programada'] ?? null);
+                if (!$fecha) continue;
+
+                $fechaDia = substr($fecha, 0, 10);
+
+                // daily counts
+                if (isset($dailyCounts[$fechaDia])) {
+                    $dailyCounts[$fechaDia]++;
+                }
+
+                // week key
+                try {
+                    $dt = new \DateTimeImmutable($fechaDia);
+                    $weekKey = $dt->format('o-\WW');
+                    if (!isset($completedWeekCounts[$weekKey])) $completedWeekCounts[$weekKey] = 0;
+                    // consideramos completadas si el estado es 'Completada' o hay fecha_realizacion
+                    $estado = is_object($t) ? $t->estado : ($t['estado'] ?? null);
+                    $fechaRealVal = is_object($t) ? ($t->fecha_realizacion ?? null) : ($t['fecha_realizacion'] ?? null);
+                    if ($estado === 'Completada' || !empty($fechaRealVal)) {
+                        $completedWeekCounts[$weekKey]++;
+                    }
+                } catch (\Exception $e) {
+                    // ignorar fechas inválidas
+                }
+
+                // tipo de tarea
+                $typeId = is_object($t) ? ($t->id_tipo_tarea ?? null) : ($t['id_tipo_tarea'] ?? null);
+                if ($typeId !== null && isset($typeCounts[$typeId])) {
+                    $typeCounts[$typeId]++;
+                }
+            }
+        }
+
+        // Preparar arrays para la vista: dailyLabels / dailyData
+        $dailyData = [];
+        foreach ($dailyLabels as $lbl) {
+            $dailyData[] = $dailyCounts[$lbl] ?? 0;
+        }
+
+        // tipos: labels y data
+        $typeLabels = [];
+        $typeData = [];
+        foreach ($typeMap as $id => $name) {
+            $typeLabels[] = $name;
+            $typeData[] = $typeCounts[$id] ?? 0;
+        }
+
+        // Semanas: elegir las últimas 4 semanas (ordenadas de antigua a reciente)
+        $weeklyLabels = [];
+        $weeklyData = [];
+        for ($i = 3; $i >= 0; $i--) {
+            $dt = (new \DateTimeImmutable('today'))->sub(new \DateInterval("P" . ($i*7) . "D"));
+            $weekKey = $dt->format('o-\WW');
+            $label = 'Sem ' . $dt->format('W') . ' ' . $dt->format('Y');
+            $weeklyLabels[] = $label;
+            $weeklyData[] = $completedWeekCounts[$weekKey] ?? 0;
+        }
+
+        // --- FIX: definir $charts antes de incluirlo en $data ---
+        $charts = [
+            'daily'  => ['labels' => $dailyLabels, 'data' => $dailyData ?? array_values($dailyCounts)],
+            'byType' => ['labels' => $typeLabels,  'data' => $typeData],
+            'weekly' => ['labels' => $weeklyLabels,'data' => $weeklyData],
+        ];
+
+        // 3. Preparar data para la vista (mantener lo existente + kpis)
         $data = [
-            // Stats
             'totalPacientes'    => count($misPacientes),
-            'planesActivos'     => count($planesActivos),
-
-            // Listas para tablas y selects
+            'planesActivos'     => count($misPlanes),
             'listaPlanes'       => $misPlanes,
-            'listaPacientes'    => $misPacientes,      
-            'todosLosPacientes' => $todosLosPacientes, 
-            'listaDiagnosticos' => $listaDiagnosticos,
-            'listaMedicamentos' => $medicamentoModel->findAll(), 
-            'listaTiposTarea'   => $listaTiposTarea,
-            'listaTareas'       => $listaTareas
+            'listaPacientes'    => $misPacientes,
+            'todosLosPacientes' => $usuarioModel->getPacientes(),
+            'listaDiagnosticos' => $diagnosticoModel->findAll(),
+            'listaTiposTarea'   => $tipoTareaModel->findAll(),
+            'listaMedicamentos' => $medicamentoModel->findAll(),
+            'soloLectura'       => false,
+ 
+            // KPIs: generales y filtrados (HU-10)
+            'kpis_general'  => $kpis_general,
+            'kpis_filtrado' => $kpis_filtrado,
+            'selected_paciente' => $selectedPaciente,
+ 
+            // Datos para gráficas (nombre coherente)
+            'charts' => $charts,
         ];
 
         return view('dashboard_profesional', $data);
@@ -174,6 +346,140 @@ class DashboardController extends BaseController
     return view('dashboard_paciente', $data);
     } 
 
-    
-    
+    /**
+     * Endpoint JSON: devuelve kpis y charts según ?paciente=ID (para actualización AJAX)
+     * Ruta: /profesional/kpis
+     */
+    public function kpis()
+    {
+        $usuarioModel = new \App\Models\UsuarioModel();
+        $planModel = new \App\Models\PlanModel();
+        $tareaModel = new \App\Models\TareaModel();
+        $tipoTareaModel = new \App\Models\TipoTareaModel();
+
+        $idProfesional = $this->session->get('id_usuario');
+        $selectedPaciente = $this->request->getGet('paciente') ? (int)$this->request->getGet('paciente') : null;
+
+        $misPlanes = $planModel->getPlanesPorProfesional($idProfesional) ?: [];
+
+        // Filtrar planes para charts / KPIs (según paciente)
+        $plansForCharts = [];
+        if ($selectedPaciente) {
+            foreach ($misPlanes as $p) {
+                $pid = is_object($p) ? $p->id_paciente : ($p['id_paciente'] ?? null);
+                if (intval($pid) === $selectedPaciente) $plansForCharts[] = $p;
+            }
+        } else {
+            $plansForCharts = $misPlanes;
+        }
+
+        $planIds = array_map(function($p){ return is_object($p) ? $p->id : ($p['id'] ?? null); }, $plansForCharts);
+        $planIds = array_filter($planIds);
+
+        // Inicializa estructuras
+        $dailyLabels = []; $dailyCounts = [];
+        for ($i = 27; $i >= 0; $i--) {
+            $d = (new \DateTimeImmutable('today'))->sub(new \DateInterval("P{$i}D"))->format('Y-m-d');
+            $dailyLabels[] = $d;
+            $dailyCounts[$d] = 0;
+        }
+
+        $types = $tipoTareaModel->findAll();
+        $typeMap = []; foreach ($types as $t) { $id = is_object($t)?$t->id_tipo_tarea:($t['id_tipo_tarea']??null); $name = is_object($t)?$t->nombre:($t['nombre']??''); if ($id!==null) $typeMap[$id]=$name; }
+        $typeCounts = array_fill_keys(array_keys($typeMap), 0);
+
+        $completedWeekCounts = [];
+        // preparar week keys para 4 semanas (en build later)
+
+        // Recolectar tareas si hay planes
+        $tasks = [];
+        if (!empty($planIds)) {
+            $tasks = $tareaModel->whereIn('id_plan', $planIds)->findAll();
+        }
+
+        // Recorrer tareas para poblar dailyCounts, typeCounts y weekCounts
+        foreach ($tasks as $t) {
+            $fecha = is_object($t) ? ($t->fecha_realizacion ?? $t->fecha_programada ?? null) : ($t['fecha_realizacion'] ?? $t['fecha_programada'] ?? null);
+            if (!$fecha) continue;
+            $fechaDia = substr($fecha, 0, 10);
+            if (isset($dailyCounts[$fechaDia])) $dailyCounts[$fechaDia]++;
+
+            // semana ISO
+            try {
+                $dt = new \DateTimeImmutable($fechaDia);
+                $weekKey = $dt->format('o-\WW');
+                if (!isset($completedWeekCounts[$weekKey])) $completedWeekCounts[$weekKey] = 0;
+                $estado = is_object($t) ? $t->estado : ($t['estado'] ?? null);
+                $fechaRealVal = is_object($t) ? ($t->fecha_realizacion ?? null) : ($t['fecha_realizacion'] ?? null);
+                if ($estado === 'Completada' || !empty($fechaRealVal)) {
+                    $completedWeekCounts[$weekKey]++;
+                }
+            } catch (\Exception $e) { /* ignore */ }
+
+            $typeId = is_object($t) ? ($t->id_tipo_tarea ?? null) : ($t['id_tipo_tarea'] ?? null);
+            if ($typeId !== null && isset($typeCounts[$typeId])) $typeCounts[$typeId]++;
+        }
+
+        // preparar weekly labels (últimas 4 semanas)
+        $weeklyLabels = []; $weeklyData = [];
+        for ($i = 3; $i >= 0; $i--) {
+            $dt = (new \DateTimeImmutable('today'))->sub(new \DateInterval("P" . ($i*7) . "D"));
+            $weekKey = $dt->format('o-\WW');
+            $label = 'Sem ' . $dt->format('W') . ' ' . $dt->format('Y');
+            $weeklyLabels[] = $label;
+            $weeklyData[] = $completedWeekCounts[$weekKey] ?? 0;
+        }
+
+        // type arrays
+        $typeLabels=[]; $typeData=[];
+        foreach ($typeMap as $id=>$name) { $typeLabels[]=$name; $typeData[]=$typeCounts[$id] ?? 0; }
+
+        // KPIs (global sobre plansForCharts)
+        $k = [
+            'porcentaje_completado' => 0, 'tareas_completadas' => 0, 'tareas_pendientes' => 0, 'racha_dias' => 0, 'total_tareas' => 0
+        ];
+        $totalTasks = count($tasks);
+        $completedTasks = 0;
+        $completedDates = [];
+        $sinceDate = date('Y-m-d', strtotime('-28 days'));
+        $tasksLast28 = 0;
+        foreach ($tasks as $t) {
+            $estado = is_object($t) ? $t->estado : ($t['estado'] ?? null);
+            $fecha_real = is_object($t) ? ($t->fecha_realizacion ?? null) : ($t['fecha_realizacion'] ?? null);
+            if ($estado === 'Completada' || !empty($fecha_real)) {
+                $completedTasks++;
+                $d = $fecha_real ? substr($fecha_real,0,10) : null;
+                if ($d) $completedDates[$d] = true;
+                if ($d && $d >= $sinceDate) $tasksLast28++;
+            } else {
+                if ($fecha_real && substr($fecha_real,0,10) >= $sinceDate) $tasksLast28++;
+            }
+        }
+        $k['total_tareas'] = $totalTasks;
+        $k['tareas_completadas'] = $completedTasks;
+        $k['tareas_pendientes'] = max(0, $totalTasks - $completedTasks);
+        $k['porcentaje_completado'] = $totalTasks ? round(($completedTasks / $totalTasks) * 100, 1) : 0;
+        $k['tareas_por_semana'] = round($tasksLast28 / 4, 1);
+        // racha
+        $streak = 0; $today = new \DateTimeImmutable(date('Y-m-d'));
+        for ($i=0;$i<60;$i++) {
+            $d = $today->sub(new \DateInterval("P{$i}D"))->format('Y-m-d');
+            if (isset($completedDates[$d])) $streak++; else break;
+        }
+        $k['racha_dias'] = $streak;
+
+        $response = [
+            'success' => true,
+            'selected_paciente' => $selectedPaciente,
+            'kpis_general' => $k, // simplificado: usamos mismo k para general (si quisieras separar, calcular ambos)
+            'kpis_filtrado' => ($selectedPaciente ? $k : null),
+            'charts' => [
+                'daily' => ['labels' => $dailyLabels, 'data' => array_values($dailyCounts)],
+                'byType' => ['labels' => $typeLabels, 'data' => $typeData],
+                'weekly' => ['labels' => $weeklyLabels, 'data' => $weeklyData]
+            ]
+        ];
+
+        return $this->response->setJSON($response);
+    }
 }

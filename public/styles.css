@@ -111,6 +111,16 @@ h1, h2, h3, h4, h5, h6 {
   gap: 20px;
   margin-bottom: 40px;
 }
+/* Forcing some children to occupy the full row (useful for selectors or wide KPI blocks) */
+.stats-grid > .full-width { grid-column: 1 / -1; }
+/* Centrar filas de KPIs dentro del contenedor blanco */
+.kpi-cards {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+}
 
 .content-card {
   background: white;

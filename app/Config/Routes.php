@@ -31,7 +31,7 @@ $routes->post('reset-password', 'AuthController::attemptResetPassword');
 // ===================================================================
 // 2. RUTAS COMUNES (Post-Login)
 // ===================================================================
-// Requieren que el usuario esté logueado, sin importar su rol.
+// Requieren que o usuario esté logueado, sin importar su rol.
 $routes->group('', ['filter' => 'auth'], static function ($routes) {
     
     // Redirección inteligente al dashboard correspondiente según rol
@@ -93,6 +93,8 @@ $routes->group('profesional', ['filter' => 'auth:Profesional'], static function 
 
     // Dashboard Profesional (HU-10 - Métricas)
     $routes->get('/', 'DashboardController::profesionalDashboard');
+    // Endpoint AJAX para obtener KPIs / charts filtrados por paciente
+    $routes->get('kpis', 'DashboardController::kpis');
 
     // Gestión de Pacientes (Listado solo de mis pacientes)
     // Entidad: Usuario (El experto es UsuarioController)
@@ -125,7 +127,7 @@ $routes->group('profesional', ['filter' => 'auth:Profesional'], static function 
     $routes->post('planes/(:num)/estado', 'PlanController::cambiarEstado/$1');
 });
 
-
+  $routes->get('profesional/kpis', 'DashboardController::kpis');
 // ===================================================================
 // 5. RUTAS DE PACIENTE
 // ===================================================================

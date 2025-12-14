@@ -21,6 +21,10 @@
 
         /* Asegurar alineación en tablas */
         table td { vertical-align: middle; }
+
+        /* Contenedores para gráficos: altura fija para evitar "derretimiento" al redimensionar */
+        .chart-container { height: 250px; position: relative; }
+        .chart-container canvas { width: 100% !important; height: 100% !important; display: block; }
     </style>
 </head>
 <body>
@@ -70,24 +74,110 @@
                 </div>
 
                 <div class="stats-grid">
+                    <!-- Selector de paciente movido debajo de KPIs generales (se mostrará junto a los gráficos) -->
+
+                        <!-- KPIs Filtrados por paciente (si existe selección) -->
+                        <?php if (!empty($kpis_filtrado)): $kf = $kpis_filtrado; ?>
+                            <div class="full-width" style="width:100%; margin-top:12px;" id="kpis-filtrado">
+                                <h4 style="margin:0 0 8px 0;">KPIs para el paciente seleccionado</h4>
+                                <div class="kpi-cards">
+                                    <div class="stat-card">
+                                        <div class="stat-icon" style="background:#eef2ff; color:#4338ca;"><i class="fas fa-user"></i></div>
+                                        <div class="stat-info">
+                                            <div class="stat-value" id="kf-porcentaje"><?= esc($kf['porcentaje_completado'] ?? 0) ?>%</div>
+                                            <div class="stat-label">Cumplimiento</div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <div class="stat-icon" style="background:#ecfeff; color:#0891b2;"><i class="fas fa-check"></i></div>
+                                        <div class="stat-info">
+                                            <div class="stat-value" id="kf-completadas"><?= esc($kf['tareas_completadas'] ?? 0) ?></div>
+                                            <div class="stat-label">Completadas</div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <div class="stat-icon" style="background:#fff7ed; color:#f97316;"><i class="fas fa-hourglass"></i></div>
+                                        <div class="stat-info">
+                                            <div class="stat-value" id="kf-pendientes"><?= esc($kf['tareas_pendientes'] ?? 0) ?></div>
+                                            <div class="stat-label">Pendientes</div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <div class="stat-icon" style="background:#fef3c7; color:#b45309;"><i class="fas fa-calendar-week"></i></div>
+                                        <div class="stat-info">
+                                            <div class="stat-value" id="kf-tps"><?= esc($kf['tareas_por_semana'] ?? 0) ?></div>
+                                            <div class="stat-label">Tareas / semana</div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <div class="stat-icon" style="background:#f3e8ff; color:#7c3aed;"><i class="fas fa-fire"></i></div>
+                                        <div class="stat-info">
+                                            <div class="stat-value" id="kf-racha"><?= esc($kf['racha_dias'] ?? 0) ?></div>
+                                            <div class="stat-label">Racha (días)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php elseif (isset($selected_paciente) && !$kpis_filtrado): ?>
+                            <div style="width:100%; margin-top:12px; color:#666;">El paciente seleccionado no tiene planes/tareas para calcular métricas.</div>
+                        <?php endif; ?>
+
+                        <!-- KPIs Generales (se muestran debajo del filtro por paciente) -->
+                        <?php $kg = $kpis_general ?? []; ?>
+             <div class="full-width" style="width:100%; margin-top:12px;" id="kpis-generales">
+                 <h4 style="margin:0 0 8px 0;">KPIs Generales (todos los pacientes)</h4>
+                 <div class="kpi-cards">
+                     <div class="stat-card">
+                         <div class="stat-icon" style="background:#ecfeff; color:#0891b2;"><i class="fas fa-percent"></i></div>
+                        <div class="stat-info"><div class="stat-value" id="kg-porcentaje"><?= esc($kg['porcentaje_completado'] ?? 0) ?>%</div><div class="stat-label">Cumplimiento Global</div></div>
+                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon" style="background:#e0f2fe; color:#0284c7;">
-                            <i class="fas fa-user-injured"></i>
-                        </div>    
-                        <div class="stat-info">
-                            <div class="stat-value"><?= esc($totalPacientes) ?></div>
-                            <div class="stat-label">Pacientes Asignados</div>
-                        </div>
+                        <div class="stat-icon" style="background:#f0fdf4; color:#10b981;"><i class="fas fa-check-circle"></i></div>
+                        <div class="stat-info"><div class="stat-value" id="kg-completadas"><?= esc($kg['tareas_completadas'] ?? 0) ?></div><div class="stat-label">Tareas Completadas</div></div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon" style="background:#dcfce7; color:#16a34a;">
-                            <i class="fas fa-file-medical-alt"></i>
-                        </div>
-                        <div class="stat-info">
-                            <div class="stat-value"><?= esc($planesActivos) ?></div>
-                            <div class="stat-label">Planes Activos</div>
+                        <div class="stat-icon" style="background:#fff7ed; color:#f97316;"><i class="fas fa-hourglass-half"></i></div>
+                        <div class="stat-info"><div class="stat-value" id="kg-pendientes"><?= esc($kg['tareas_pendientes'] ?? 0) ?></div><div class="stat-label">Tareas Pendientes</div></div>
+                    </div>
+                    <!-- tarjeta 'Tareas / semana' eliminada por solicitud -->
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background:#f3e8ff; color:#7c3aed;"><i class="fas fa-fire"></i></div>
+                        <div class="stat-info"><div class="stat-value" id="kg-racha"><?= esc($kg['racha_dias'] ?? 0) ?></div><div class="stat-label">Racha (días seg.)</div></div>
+                    </div>
+                 </div>
+             </div>
+                </div>
+                
+                <div style="margin-top:20px; display:flex; flex-direction:column; gap:18px;">
+                    <!-- Filtro ahora en su propia fila encima de los gráficos -->
+                    <div style="width:100%;">
+                        <div style="flex:0 1 260px; max-width:720px; background:#fff; padding:14px; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+                            <label style="font-weight:600; display:block; margin-bottom:8px; color:#334155;">Filtrar estadísticas por paciente</label>
+                            <select id="filter-paciente" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid #ccc;">
+                                <option value="">Todas las estadísticas (Global)</option>
+                                <?php if (!empty($listaPacientes)): foreach($listaPacientes as $pac): ?>
+                                    <?php $pid = is_object($pac) ? $pac->id_usuario : $pac['id_usuario']; ?>
+                                    <option value="<?= esc($pid) ?>" <?= (isset($selected_paciente) && $selected_paciente == $pid) ? 'selected' : '' ?>>
+                                        <?= esc($pac->nombre . ' ' . $pac->apellido . ' (' . $pac->email . ')') ?>
+                                    </option>
+                                <?php endforeach; endif; ?>
+                            </select>
                         </div>
                     </div>
+
+                    <!-- Contenedor de fila para alinear los gráficos horizontalmente -->
+                    <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start;">
+                        <div style="flex:1 1 520px; min-width:320px; background:#fff; padding:14px; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+                            <h3 style="margin:0 0 10px; font-size:1rem; color:#334155;">Tareas completadas (últimos 28 días)</h3>
+                            <div class="chart-container"><canvas id="chart-daily"></canvas></div>
+                        </div>
+
+                        <div style="flex:0 1 320px; min-width:260px; background:#fff; padding:14px; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+                            <h3 style="margin:0 0 10px; font-size:1rem; color:#334155;">Distribución por tipo</h3>
+                            <div class="chart-container"><canvas id="chart-type"></canvas></div>
+                        </div>
+                    </div>
+                    <!-- Gráfico semanal eliminado según solicitud -->
                 </div>
             </div>
         </div>
@@ -363,12 +453,49 @@
     <script>
         window.serverData = {
             pacientes: <?= json_encode($todosLosPacientes ?? []) ?>,
-            diagnosticos: <?= json_encode($listaDiagnosticos ?? []) ?>
-            , tipos: <?= json_encode($listaTiposTarea ?? []) ?>
-            , role: <?= json_encode(session()->get('nombre_rol') ?? '') ?>
+            diagnosticos: <?= json_encode($listaDiagnosticos ?? []) ?>,
+            tipos: <?= json_encode($listaTiposTarea ?? []) ?>,
+            role: <?= json_encode(session()->get('nombre_rol') ?? '') ?>,
+            kpis: <?= json_encode($kpis_general ?? []) ?>,
+            charts: <?= json_encode($charts ?? []) ?>
         };
+
+        // Exponer variables locales que usa el IIFE de inicialización de charts
+        const charts = window.serverData.charts || {};
+        const kpis = window.serverData.kpis || {};
     </script>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    (function initCharts(){
+        // Asegurarse de tener el namespace global para actualizaciones
+        window.profCharts = window.profCharts || {};
+
+        // Daily chart
+        const dayEl = document.getElementById('chart-daily');
+        if (dayEl && charts.daily) {
+            const ctx = dayEl.getContext('2d');
+            window.profCharts.daily = new Chart(ctx, {
+                type: 'line',
+                data: { labels: charts.daily.labels, datasets: [{ label: 'Completadas', data: charts.daily.data, borderColor: '#2563eb', backgroundColor: 'rgba(96,165,250,0.2)', fill: true }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        // By Type chart -> usa el ID del canvas presente en la vista: chart-type
+        const typeEl = document.getElementById('chart-type');
+        if (typeEl && charts.byType) {
+            const ctx = typeEl.getContext('2d');
+            window.profCharts.byType = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: charts.byType.labels, datasets: [{ data: charts.byType.data, backgroundColor: ['#60A5FA','#34D399','#FBBF24','#F472B6','#A78BFA'] }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+            // Weekly chart removed intentionally
+    })();
+    </script>
     <meta name="base-url" content="<?= base_url() ?>">
     <meta name="csrf-token" content="<?= csrf_hash() ?>">
     <script src="<?= base_url('script.js') ?>"></script>
@@ -457,5 +584,104 @@
         modal.classList.add('active');
     }
 </script>
+    <script>
+        // helpers: crear o actualizar charts dinámicamente
+        function createChartsFromData(charts) {
+            window.profCharts = window.profCharts || {};
+
+            const dayEl = document.getElementById('chart-daily');
+            if (dayEl && charts.daily) {
+                const ctx = dayEl.getContext('2d');
+                window.profCharts.daily = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: charts.daily.labels, datasets: [{ label: 'Completadas', data: charts.daily.data, borderColor: '#2563eb', backgroundColor: 'rgba(96,165,250,0.2)', fill: true }] },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+                });
+            }
+
+            const typeEl = document.getElementById('chart-type');
+            if (typeEl && charts.byType) {
+                const ctx2 = typeEl.getContext('2d');
+                window.profCharts.byType = new Chart(ctx2, {
+                    type: 'doughnut',
+                    data: { labels: charts.byType.labels, datasets: [{ data: charts.byType.data, backgroundColor: ['#60A5FA','#34D399','#FBBF24','#F472B6','#A78BFA'] }] },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            // Weekly chart removed intentionally
+        }
+
+        function updateChartsFromData(charts) {
+            if (!charts) return;
+            if (window.profCharts.daily && charts.daily) {
+                window.profCharts.daily.data.labels = charts.daily.labels;
+                window.profCharts.daily.data.datasets[0].data = charts.daily.data;
+                window.profCharts.daily.update();
+            }
+            if (window.profCharts.byType && charts.byType) {
+                window.profCharts.byType.data.labels = charts.byType.labels;
+                window.profCharts.byType.data.datasets[0].data = charts.byType.data;
+                window.profCharts.byType.update();
+            }
+            // Weekly chart update removed intentionally
+        }
+
+        // Reutilizable: actualiza KPIs en DOM (prefix: kg | kf)
+        function setKpiValues(prefix, data) {
+            if (!data) return;
+            const map = { 'porcentaje_completado':'porcentaje', 'tareas_completadas':'completadas', 'tareas_pendientes':'pendientes', 'tareas_por_semana':'tps', 'racha_dias':'racha' };
+            Object.keys(map).forEach(k => {
+                const id = `${prefix}-${map[k]}`;
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.textContent = (k === 'porcentaje_completado') ? ((data[k] ?? 0) + '%') : (data[k] ?? 0);
+            });
+        }
+
+        document.getElementById('filter-paciente').addEventListener('change', function(e){
+            const val = e.target.value;
+            const baseMeta = document.querySelector('meta[name="base-url"]');
+            const base = baseMeta ? baseMeta.content.replace(/\/$/,'') : '';
+            const url = val ? `${base}/profesional/kpis?paciente=${val}` : `${base}/profesional/kpis`;
+
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' })
+                .then(r => r.json())
+                .then(json => {
+                    console.log('kpis response:', json); // <--- útil para depuración
+                    if (!json || !json.success) {
+                        alert('No se pudieron cargar métricas.');
+                        return;
+                    }
+
+                    // KPIs generales siempre se actualizan
+                    if (json.kpis_general) setKpiValues('kg', json.kpis_general);
+
+                    // KPIs filtrados (si vienen)
+                    if (json.kpis_filtrado) {
+                        // asegurarse que la sección filtrada está visible
+                        const kfSection = document.getElementById('kpis-filtrado');
+                        if (kfSection) kfSection.style.display = 'block';
+                        setKpiValues('kf', json.kpis_filtrado);
+                    } else {
+                        const kfSection = document.getElementById('kpis-filtrado');
+                        if (kfSection) kfSection.style.display = 'none';
+                    }
+
+                    // Charts: si aún no existen, crearlos; si existen, actualizarlos
+                    if (json.charts) {
+                        if (!window.profCharts || (!window.profCharts.daily && !window.profCharts.byType)) {
+                            createChartsFromData(json.charts);
+                        } else {
+                            updateChartsFromData(json.charts);
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error('Error fetching kpis:', err);
+                    alert('Error de conexión al obtener métricas.');
+                });
+        });
+    </script>
 </body>
 </html>
