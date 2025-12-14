@@ -9,6 +9,8 @@ use App\Models\DiagnosticoModel;
 use App\Models\TareaModel;
 use App\Models\TipoTareaModel;
 use App\Models\RolModel;
+use App\Models\TareaEstandarModel;
+use App\Models\PlanEstandarModel;
 
 class DashboardController extends BaseController
 {
@@ -91,6 +93,8 @@ class DashboardController extends BaseController
         $tareaModel = new TareaModel();
         $tipoTareaModel = new TipoTareaModel(); // Agregado
         $medicamentoModel = new MedicamentoModel();
+        $planEstandarModel = new PlanEstandarModel();
+        $tareaEstandarModel = new TareaEstandarModel();
         
         $idProfesional = $this->session->get('id_usuario');
 
@@ -291,7 +295,8 @@ class DashboardController extends BaseController
             'selected_paciente' => $selectedPaciente,
  
             // Datos para gráficas (nombre coherente)
-            'charts' => $charts,
+            'charts' => $charts,,
+            'listaPlanesEstandar' => $planEstandarModel->findAll()
         ];
 
         return view('dashboard_profesional', $data);

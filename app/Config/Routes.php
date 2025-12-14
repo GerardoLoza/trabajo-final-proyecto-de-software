@@ -125,6 +125,21 @@ $routes->group('profesional', ['filter' => 'auth:Profesional'], static function 
     // HU-09: Validar Cumplimiento (Profesional cambia estado del plan)
     // Entidad: Plan (Acción específica de negocio)
     $routes->post('planes/(:num)/estado', 'PlanController::cambiarEstado/$1');
+    
+    // HU-06a: Gestión de Plantillas Estandarizadas
+    $routes->resource('planes-estandar', [
+        'controller' => 'PlanEstandarController',
+        'only' => ['create', 'delete'] 
+    ]);
+
+    // 2. Tareas Estandar (Crear y Borrar)
+    $routes->resource('tareas-estandar', [
+        'controller' => 'TareaEstandarController',
+        'only' => ['create', 'delete']
+    ]);
+
+    $routes->get('planes-estandar/(:num)/tareas', 'TareaEstandarController::indexPorPlan/$1');
+    $routes->post('planes-estandar/asignar', 'PlanEstandarController::assign');
 });
 // ===================================================================
 // 5. RUTAS DE PACIENTE
