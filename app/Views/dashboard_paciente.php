@@ -74,7 +74,7 @@
             <button class="nav-btn active" onclick="location.reload()">
                 <i class="fas fa-home" style="margin-right: 8px;"></i> Mi Panel
             </button>
-            <button class="nav-btn" onclick="alert('Próximamente')">
+            <button class="nav-btn" onclick="window.location.href='<?= base_url('paciente/documentos') ?>'">
                 <i class="fas fa-file-medical" style="margin-right: 8px;"></i> Documentos
             </button>
             <button onclick="window.location.href='<?= base_url('logout') ?>'" class="nav-btn" style="margin-top: auto; background-color: #dc2626;">
