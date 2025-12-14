@@ -5,6 +5,8 @@ namespace App\Controllers;
 use App\Controllers\BaseController;
 use App\Models\PlanEstandarModel;
 use App\Models\TareaEstandarModel;
+use App\Models\TareaModel;
+use App\Models\PlanModel;
 
 class PlanEstandarController extends BaseController
 {
@@ -76,6 +78,90 @@ class PlanEstandarController extends BaseController
             }
 
             return $this->response->setJSON(['success' => true, 'message' => 'Plantilla creada con éxito.']);
+
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function assign()
+    {
+        $request = $this->request->getJSON(); // Recibimos JSON desde el modal
+
+        // Validaciones básicas
+        if (!$request || empty($request->id_plan_estandar) || empty($request->id_paciente) || empty($request->fecha_inicio)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Faltan datos requeridos (Plan, Paciente o Fecha Inicio).']);
+        }
+
+        $db = \Config\Database::connect();
+        
+        // Modelos necesarios
+        $stdPlanModel = new PlanEstandarModel();
+        $stdTareaModel = new TareaEstandarModel();
+        $realPlanModel = new PlanModel();
+        $realTareaModel = new TareaModel();
+
+        // 1. Obtener datos de la plantilla
+        $plantilla = $stdPlanModel->find($request->id_plan_estandar);
+        if (!$plantilla) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Plantilla no encontrada.']);
+        }
+
+        try {
+            $db->transStart();
+
+            // 2. Crear el Plan Real (Cabecera)
+            $planData = [
+                'nombre'             => $plantilla->nombre, // Hereda nombre
+                'descripcion'        => $plantilla->descripcion, // Hereda descripción
+                'id_profesional'     => session()->get('id_usuario'),
+                'id_paciente'        => $request->id_paciente,
+                'nombre_diagnostico' => $plantilla->nombre_diagnostico,
+                'fecha_inicio'       => $request->fecha_inicio,
+                'fecha_fin'          => $request->fecha_fin ?? null, // Puede ser null o calculado
+                'estado'             => 'Vigente'
+            ];
+
+            $realPlanId = $realPlanModel->insert($planData, true); // true para return ID
+
+            // 3. Obtener tareas de la plantilla y clonarlas
+            $tareasPlantilla = $stdTareaModel->where('id_plan_estandar', $plantilla->id)->findAll();
+
+            if (!empty($tareasPlantilla)) {
+                $fechaInicioBase = new \DateTime($request->fecha_inicio);
+                $numTarea = 1;
+
+                foreach ($tareasPlantilla as $tp) {
+                    // CÁLCULO DE FECHA: Fecha Inicio + (Día Relativo - 1)
+                    // Ej: Inicio 01/01. Día relativo 1 -> 01/01. Día relativo 3 -> 03/01.
+                    $fechaTarea = clone $fechaInicioBase;
+                    $diasSumar = max(0, $tp->dia_relativo - 1); // Asegurar no restar días
+                    $fechaTarea->modify("+$diasSumar days");
+                    
+                    // Asignamos una hora por defecto (ej: 09:00 AM) para que no sea 00:00
+                    $fechaTarea->setTime(9, 0, 0);
+
+                    $tareaData = [
+                        'id_plan'            => $realPlanId,
+                        'id_tipo_tarea'      => $tp->id_tipo_tarea,
+                        'num_tarea'          => $numTarea++,
+                        'descripcion'        => $tp->descripcion,
+                        'fecha_programada'   => $fechaTarea->format('Y-m-d H:i:s'),
+                        'estado'             => 'Pendiente',
+                        'nombre_medicamento' => $tp->nombre_medicamento
+                    ];
+
+                    $realTareaModel->insert($tareaData);
+                }
+            }
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Error al guardar en base de datos.']);
+            }
+
+            return $this->response->setJSON(['success' => true, 'message' => 'Plan asignado correctamente al paciente.']);
 
         } catch (\Exception $e) {
             return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);

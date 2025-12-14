@@ -137,6 +137,7 @@ $routes->group('profesional', ['filter' => 'auth:Profesional'], static function 
     ]);
 
     $routes->get('planes-estandar/(:num)/tareas', 'TareaEstandarController::indexPorPlan/$1');
+    $routes->post('planes-estandar/asignar', 'PlanEstandarController::assign');
 });
 
 

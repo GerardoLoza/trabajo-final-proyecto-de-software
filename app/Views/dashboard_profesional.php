@@ -310,9 +310,15 @@
                                                 <i class="fas fa-eye"></i>
                                             </button>
 
+                                            <button class="btn-primary btn-icon"
+                                                onclick="openAssignModal(<?= esc($pe->id) ?>, '<?= esc($pe->nombre) ?>')"
+                                                title="Asignar a Paciente" style="background-color: #059669; border:none;">
+                                                <i class="fas fa-user-check"></i>
+                                            </button>
+
                                             <button class="btn-secondary btn-icon"
                                                 onclick="openStdTasksManager(<?= esc($pe->id) ?>, '<?= esc($pe->nombre) ?>')"
-                                                title="Gestionar Tareas del Plan">
+                                                title="Gestionar Tareas">
                                                 <i class="fas fa-list-check"></i>
                                             </button>
 
@@ -698,6 +704,48 @@
             </div>
         </div>
 
+        <div id="assign-plan-modal" class="modal">
+            <div class="modal-content" style="max-width: 500px; border-radius: 12px;">
+                <div class="modal-header">
+                    <h3 id="apm-title">Asignar Plan</h3>
+                    <button class="close-btn" onclick="closeModal('assign-plan-modal')">&times;</button>
+                </div>
+                <div class="modal-body" style="padding: 20px;">
+                    <p style="color:#64748b; margin-bottom:20px;">
+                        Se creará un nuevo plan vigente basado en esta plantilla.
+                    </p>
+
+                    <form onsubmit="submitAssignment(event)">
+                        <input type="hidden" id="apm-plan-id">
+
+                        <div class="form-group">
+                            <label style="font-weight:600; color:#333;">Paciente *</label>
+                            <select id="apm-paciente" required class="input-styled" style="width:100%;">
+                                <option value="">Seleccionar Paciente...</option>
+                            </select>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                            <div class="form-group">
+                                <label style="font-weight:600; color:#333;">Fecha Inicio *</label>
+                                <input type="date" id="apm-inicio" required class="input-styled" style="width:100%;">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight:600; color:#333;">Fecha Fin (Est.)</label>
+                                <input type="date" id="apm-fin" class="input-styled" style="width:100%;">
+                            </div>
+                        </div>
+
+                        <div style="text-align:right; margin-top:20px; border-top:1px solid #eee; padding-top:15px;">
+                            <button type="button" class="btn-cancel"
+                                onclick="closeModal('assign-plan-modal')">Cancelar</button>
+                            <button type="submit" class="btn-save">Confirmar Asignación</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <div id="dynamic-modal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -902,6 +950,86 @@
                     }
                 })
                 .catch(err => console.error(err));
+        }
+
+        /* --- LÓGICA DE ASIGNACIÓN DE PLANTILLA --- */
+
+        function openAssignModal(planId, planName) {
+            const modal = document.getElementById('assign-plan-modal');
+            document.getElementById('apm-title').innerText = `Asignar: ${planName}`;
+            document.getElementById('apm-plan-id').value = planId;
+
+            // Llenar select de pacientes
+            const select = document.getElementById('apm-paciente');
+            select.innerHTML = '<option value="">Seleccionar Paciente...</option>';
+
+            if (window.serverData && window.serverData.pacientes) {
+                window.serverData.pacientes.forEach(p => {
+                    select.innerHTML += `<option value="${p.id_usuario}">${p.nombre} ${p.apellido} (${p.email})</option>`;
+                });
+            }
+
+            // Setear fecha inicio a hoy por defecto
+            document.getElementById('apm-inicio').valueAsDate = new Date();
+
+            modal.classList.add('active');
+        }
+
+        function submitAssignment(e) {
+            e.preventDefault();
+
+            const planId = document.getElementById('apm-plan-id').value;
+            const pacienteId = document.getElementById('apm-paciente').value;
+            const inicio = document.getElementById('apm-inicio').value;
+            const fin = document.getElementById('apm-fin').value;
+
+            if (!pacienteId || !inicio) {
+                alert("Paciente y Fecha de Inicio son obligatorios.");
+                return;
+            }
+
+            const payload = {
+                id_plan_estandar: planId,
+                id_paciente: pacienteId,
+                fecha_inicio: inicio,
+                fecha_fin: fin
+            };
+
+            const baseMeta = document.querySelector('meta[name="base-url"]').content.replace(/\/$/, '');
+            const token = document.querySelector('meta[name="csrf-token"]').content;
+
+            // Mostrar feedback de carga
+            const btnSubmit = e.target.querySelector('button[type="submit"]');
+            const originalText = btnSubmit.innerText;
+            btnSubmit.innerText = "Asignando...";
+            btnSubmit.disabled = true;
+
+            fetch(`${baseMeta}/profesional/planes-estandar/asignar`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': token
+                },
+                body: JSON.stringify(payload)
+            })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success) {
+                        alert(res.message);
+                        location.reload(); // Recargar para ver el nuevo plan en la lista de gestión
+                    } else {
+                        alert('Error: ' + res.message);
+                        btnSubmit.innerText = originalText;
+                        btnSubmit.disabled = false;
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Error de conexión.');
+                    btnSubmit.innerText = originalText;
+                    btnSubmit.disabled = false;
+                });
         }
     </script>
     <script>
