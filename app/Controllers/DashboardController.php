@@ -311,40 +311,187 @@ class DashboardController extends BaseController
         // 1. Obtener mis planes
         $misPlanes = $planModel->getPlanesPorPaciente($idPaciente);
         
-        // 2. Buscar tareas pendientes (Solo de mis planes)
+        // 2. Buscar tareas (todas las de mis planes)
         $tareasPendientes = [];
         $totalCompletadas = 0;
-
-        // Extraemos los IDs de los planes para filtrar las tareas
         $planIds = [];
+        
         foreach ($misPlanes as $p) {
-            // Manejo robusto de objetos vs arrays
             $planIds[] = is_object($p) ? $p->id : $p['id'];
         }
 
         if (!empty($planIds)) {
-            // Buscamos tareas asociadas a esos planes que estén pendientes
             $tareasPendientes = $tareaModel->whereIn('id_plan', $planIds)
                                         ->where('estado', 'Pendiente')
                                         ->orderBy('fecha_programada', 'ASC')
                                         ->findAll();
 
-            // Contamos las completadas para las estadísticas
             $totalCompletadas = $tareaModel->whereIn('id_plan', $planIds)
                                         ->where('estado', 'Completada')
                                         ->countAllResults();
         }
+
+        // --- NUEVO: Calcular métricas de adherencia ---
+        // 3. Adherencia Global
+        $adherenciaData = $this->calcularAdherenciaGlobal($tareaModel, $planIds);
+        
+        // 4. Adherencia por Plan
+        $adherenciaPorPlan = $this->calcularAdherenciaPorPlan($tareaModel, $misPlanes);
+        
+        // 5. Evolución temporal (últimos 7 días)
+        $evolucionTemporal = $this->obtenerEvolucionTemporal($tareaModel, $planIds);
 
         $data = [
             'totalPlanes'      => count($misPlanes),
             'totalPendientes'  => count($tareasPendientes),
             'totalCompletadas' => $totalCompletadas,
             'listaPlanes'      => $misPlanes,
-            'listaTareas'      => $tareasPendientes // Se mostrarán en la tabla de tareas
+            'listaTareas'      => $tareasPendientes,
+            // --- NUEVO ---
+            'adherenciaGlobal' => $adherenciaData,
+            'adherenciaPorPlan' => $adherenciaPorPlan,
+            'evolucionTemporal' => $evolucionTemporal,
         ];
 
-    return view('dashboard_paciente', $data);
-    } 
+        return view('dashboard_paciente', $data);
+    }
+
+    /**
+     * Calcula adherencia global del paciente
+     * @param TareaModel $tareaModel
+     * @param array $planIds
+     * @return array ['porcentaje' => float, 'completadas' => int, 'total' => int]
+     */
+    private function calcularAdherenciaGlobal($tareaModel, $planIds)
+    {
+        if (empty($planIds)) {
+            return ['porcentaje' => 0, 'completadas' => 0, 'total' => 0];
+        }
+
+        $totalTareas = $tareaModel->whereIn('id_plan', $planIds)->countAllResults();
+        $completadas = $tareaModel->whereIn('id_plan', $planIds)
+                                   ->where('estado', 'Completada')
+                                   ->countAllResults();
+
+        $porcentaje = $totalTareas > 0 ? round(($completadas / $totalTareas) * 100, 1) : 0;
+
+        return [
+            'porcentaje' => min($porcentaje, 100), // Asegurar máx 100%
+            'completadas' => $completadas,
+            'total' => $totalTareas
+        ];
+    }
+
+    /**
+     * Calcula adherencia por cada plan
+     * @param TareaModel $tareaModel
+     * @param array $misPlanes
+     * @return array [plan_id => ['porcentaje' => float, ...], ...]
+     */
+    private function calcularAdherenciaPorPlan($tareaModel, $misPlanes)
+    {
+        $resultado = [];
+
+        foreach ($misPlanes as $plan) {
+            $planId = is_object($plan) ? $plan->id : $plan['id'];
+            
+            $totalTareas = $tareaModel->where('id_plan', $planId)->countAllResults();
+            $completadas = $tareaModel->where('id_plan', $planId)
+                                       ->where('estado', 'Completada')
+                                       ->countAllResults();
+
+            $porcentaje = $totalTareas > 0 ? round(($completadas / $totalTareas) * 100, 1) : 0;
+
+            $resultado[$planId] = [
+                'porcentaje' => min($porcentaje, 100),
+                'completadas' => $completadas,
+                'total' => $totalTareas
+            ];
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Endpoint AJAX: Obtiene adherencia de un plan específico
+     * Ruta: /paciente/adherencia-plan/{id_plan}
+     * Respuesta JSON: {'success': true, 'data': {'porcentaje': 75, 'completadas': 3, 'total': 4}}
+     */
+    public function getAdherenciaPlan($idPlan)
+    {
+        // Verificar que sea AJAX
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Acceso denegado']);
+        }
+
+        $idPaciente = $this->session->get('id_usuario');
+        $tareaModel = new TareaModel();
+        $planModel = new PlanModel();
+
+        // Verificar que el plan le pertenece al paciente
+        $plan = $planModel->where('id', $idPlan)->where('id_paciente', $idPaciente)->first();
+        if (!$plan) {
+            return $this->response->setStatusCode(404)->setJSON(['success' => false, 'message' => 'Plan no encontrado']);
+        }
+
+        // Calcular adherencia del plan
+        $totalTareas = $tareaModel->where('id_plan', $idPlan)->countAllResults();
+        $completadas = $tareaModel->where('id_plan', $idPlan)
+                                   ->where('estado', 'Completada')
+                                   ->countAllResults();
+
+        $porcentaje = $totalTareas > 0 ? round(($completadas / $totalTareas) * 100, 1) : 0;
+
+        return $this->response->setJSON([
+            'success' => true,
+            'data' => [
+                'porcentaje' => min($porcentaje, 100),
+                'completadas' => $completadas,
+                'total' => $totalTareas
+            ]
+        ]);
+    }
+
+    /**
+     * Obtiene evolución temporal: tareas completadas en los últimos 7 días
+     * @param TareaModel $tareaModel
+     * @param array $planIds
+     * @return array ['2025-01-15' => 3, '2025-01-14' => 2, ...]
+     */
+    private function obtenerEvolucionTemporal($tareaModel, $planIds)
+    {
+        if (empty($planIds)) {
+            return [];
+        }
+
+        // Últimos 7 días
+        $hace7Dias = date('Y-m-d', strtotime('-7 days'));
+        
+        $tareas = $tareaModel->whereIn('id_plan', $planIds)
+                             ->where('estado', 'Completada')
+                             ->where('fecha_realizacion >=', $hace7Dias)
+                             ->findAll();
+
+        $evolucion = [];
+        foreach ($tareas as $t) {
+            $fecha = is_object($t) ? $t->fecha_realizacion : $t['fecha_realizacion'];
+            if (!$fecha) continue;
+            
+            $fechaDia = substr($fecha, 0, 10); // YYYY-MM-DD
+            $evolucion[$fechaDia] = ($evolucion[$fechaDia] ?? 0) + 1;
+        }
+
+        // Rellenar días faltantes con 0
+        for ($i = 6; $i >= 0; $i--) {
+            $dia = date('Y-m-d', strtotime("-$i days"));
+            if (!isset($evolucion[$dia])) {
+                $evolucion[$dia] = 0;
+            }
+        }
+
+        ksort($evolucion);
+        return $evolucion;
+    }
 
     /**
      * Endpoint JSON: devuelve kpis y charts según ?paciente=ID (para actualización AJAX)

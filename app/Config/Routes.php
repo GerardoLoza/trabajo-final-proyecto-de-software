@@ -126,8 +126,6 @@ $routes->group('profesional', ['filter' => 'auth:Profesional'], static function 
     // Entidad: Plan (Acción específica de negocio)
     $routes->post('planes/(:num)/estado', 'PlanController::cambiarEstado/$1');
 });
-
-  $routes->get('profesional/kpis', 'DashboardController::kpis');
 // ===================================================================
 // 5. RUTAS DE PACIENTE
 // ===================================================================
@@ -147,6 +145,9 @@ $routes->group('paciente', ['filter' => 'auth:Paciente'], static function ($rout
     $routes->post('tareas/(:num)/completar', 'TareaController::registrarProgreso/$1');
     // Endpoint específico para obtener tareas de un plan
     $routes->get('planes/(:num)/tareas', 'TareaController::porPlan/$1');
+
+    // Endpoint AJAX: Obtener adherencia de un plan específico
+    $routes->get('adherencia-plan/(:num)', 'DashboardController::getAdherenciaPlan/$1');
 
     // HU-11: Documentación Médica
     // Entidad: Documento (Si existe tabla documentos, sino va en UsuarioController o PlanController)
