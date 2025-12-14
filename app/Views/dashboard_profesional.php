@@ -873,24 +873,23 @@
     <?= view('planes/tasks_modal') ?>
 
     <script>
-        window.serverData = {
-            pacientes: <?= json_encode($todosLosPacientes ?? []) ?>,
-            diagnosticos: <?= json_encode($listaDiagnosticos ?? []) ?>,
-            tipos: <?= json_encode($listaTiposTarea ?? []) ?>,
-            role: <?= json_encode(session()->get('nombre_rol') ?? '') ?>,
-            kpis: <?= json_encode($kpis_general ?? []) ?>,
-            charts: <?= json_encode($charts ?? []) ?>
-        };
+    window.serverData = {
+        // Datos básicos
+        pacientes: <?= json_encode($todosLosPacientes ?? []) ?>,
+        diagnosticos: <?= json_encode($listaDiagnosticos ?? []) ?>,
+        tipos: <?= json_encode($listaTiposTarea ?? []) ?>,
+        medicamentos: <?= json_encode($listaMedicamentos ?? []) ?>,
+        role: <?= json_encode(session()->get('nombre_rol') ?? '') ?>,
+        
+        // Datos para Gráficos y KPIs (si existen)
+        kpis: <?= json_encode($kpis_general ?? []) ?>,
+        charts: <?= json_encode($charts ?? []) ?>
+    };
 
-        // Exponer variables locales que usa el IIFE de inicialización de charts
-        const charts = window.serverData.charts || {};
-        const kpis = window.serverData.kpis || {};
-            diagnosticos: <?= json_encode($listaDiagnosticos ?? []) ?>,
-            tipos: <?= json_encode($listaTiposTarea ?? []) ?>,
-            role: <?= json_encode(session()->get('nombre_rol') ?? '') ?>,
-            medicamentos: <?= json_encode($listaMedicamentos ?? []) ?>
-        };
-    </script>
+    // Exponer variables locales que usa el IIFE de inicialización de charts
+    const charts = window.serverData.charts || {};
+    const kpis = window.serverData.kpis || {};
+</script>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
