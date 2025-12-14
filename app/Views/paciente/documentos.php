@@ -48,7 +48,7 @@
                             <tr>
                                 <td><strong><?= esc($d->titulo) ?></strong></td>
                                 <td><?= esc($d->tipo) ?></td>
-                                <td><?= esc($d->id_plan ?? '—') ?></td>
+                                <td><?= esc($d->nombre_plan ?? '—') ?></td>
                                 <td><?= esc($d->created_at) ?></td>
                                 <td>
                                     <div class="actions">
@@ -96,8 +96,18 @@
                     </div>
                     <div class="form-group">
                         <label>Asociar a plan (opcional)</label>
-                        <input type="number" name="id_plan" placeholder="ID plan o dejar vacío">
+                        <select name="id_plan">
+                            <option value="">Sin plan asociado</option>
+                            <?php if (!empty($planes)): ?>
+                                <?php foreach ($planes as $plan): ?>
+                                    <option value="<?= esc($plan->id) ?>">
+                                        <?= esc($plan->nombre) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
                     </div>
+
                     <div class="form-group">
                         <label>Archivo (PDF/JPG/PNG, máx 5MB)</label>
                         <input type="file" name="archivo" accept=".pdf,.jpg,.jpeg,.png,.heic" required>
