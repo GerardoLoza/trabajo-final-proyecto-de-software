@@ -804,7 +804,7 @@
         }
     </script>
 
-    <!-- Script específico para creación de Planes Estandarizados -->
+     
     <script>
         let tempStandardTasks = []; // Array temporal
 
@@ -1034,16 +1034,18 @@
     </script>
     <script>
         // Configuración de campos para el modal dinámico
+        // Configuración de campos para el modal dinámico
         const formConfigs = {
             'medicamentos': [{ name: 'nombre', label: 'Nombre del Medicamento', type: 'text', required: true }],
             'tipos-tarea': [{ name: 'nombre', label: 'Nombre del Tipo', type: 'text', required: true }],
             'diagnosticos': [
                 { name: 'nombre', label: 'Nombre Diagnóstico', type: 'text', required: true },
                 { name: 'descripcion', label: 'Descripción', type: 'textarea', required: false }
-            ],
+            ], // <--- AQUÍ FALTABA LA COMA
             'planes-estandar': [
                 { name: 'nombre', label: 'Nombre de la Plantilla', type: 'text', required: true },
                 { name: 'descripcion', label: 'Descripción (Opcional)', type: 'textarea', required: false },
+                // El 'source: diagnosticos' tomará los datos de window.serverData.diagnosticos
                 { name: 'nombre_diagnostico', label: 'Patología Asociada', type: 'select', source: 'diagnosticos', required: true }
             ]
         };
@@ -1266,5 +1268,4 @@
 
     </script>
 </body>
-
-</html>
+</html> -
