@@ -174,32 +174,27 @@ class TareaController extends BaseController
     {
         $tareaModel = new \App\Models\TareaModel();
         $docModel = new \App\Models\DocumentoModel();
-        $planModel = new \App\Models\PlanModel(); // Necesario para obtener id_plan
+        $planModel = new \App\Models\PlanModel();
         $userId = $this->session->get('id_usuario');
 
-        // Validar que la tarea exista y pertenezca a un plan del usuario
-        // (Hacemos un join o doble consulta para seguridad)
         $tarea = $tareaModel->find($idTarea);
         
         if (!$tarea) {
             return $this->response->setJSON(['success' => false, 'message' => 'Tarea no encontrada']);
         }
 
-        // Verificar que el plan pertenece al paciente
         $plan = $planModel->where('id', $tarea->id_plan)->where('id_paciente', $userId)->first();
         if (!$plan) {
             return $this->response->setJSON(['success' => false, 'message' => 'No autorizado']);
         }
 
-        // Obtener archivo (si existe)
         $file = $this->request->getFile('evidencia');
         
-        // Iniciar Transacción
         $db = \Config\Database::connect();
         $db->transStart();
 
         try {
-            // 1. Si hay archivo, lo subimos como 'Evidencia'
+            // 1. Si hay archivo, lo subimos
             if ($file && $file->isValid()) {
                 $newName = $file->getRandomName();
                 $path = WRITEPATH . 'uploads/documentos';
@@ -207,16 +202,23 @@ class TareaController extends BaseController
                 if (!is_dir($path)) mkdir($path, 0755, true);
                 $file->move($path, $newName);
 
-                $docModel->insert([
+                $dataDoc = [
                     'id_paciente' => $userId,
                     'id_plan'     => $plan->id,
-                    'id_tarea'    => $idTarea, // Vinculación clave
-                    'tipo'        => 'Comprobante',
+                    'id_tarea'    => $idTarea,
+                    'tipo'        => 'Comprobante', // Esto ahora será válido en el modelo
                     'titulo'      => 'Comprobante: ' . $tarea->descripcion,
                     'archivo'     => 'documentos/' . $newName,
                     'mime'        => $file->getClientMimeType(),
                     'tamano'      => $file->getSize(),
-                ]);
+                ];
+
+                // CORRECCIÓN: Verificar si la inserción falló (por validación u otro motivo)
+                if (!$docModel->insert($dataDoc)) {
+                    // Obtener errores de validación para entender qué pasó
+                    $errors = $docModel->errors();
+                    throw new \Exception('Error al guardar documento: ' . implode(', ', $errors));
+                }
             }
 
             // 2. Marcar tarea como completada
@@ -227,13 +229,16 @@ class TareaController extends BaseController
 
             $db->transComplete();
 
+            if ($db->transStatus() === false) {
+                 throw new \Exception('Error en la transacción de base de datos.');
+            }
+
             return $this->response->setJSON(['success' => true, 'message' => 'Tarea completada exitosamente.']);
 
         } catch (\Throwable $e) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Error al guardar: ' . $e->getMessage()]);
+            return $this->response->setJSON(['success' => false, 'message' => 'No se pudo completar: ' . $e->getMessage()]);
         }
     }
-
     // HU09: Profesional valida cumplimiento
     public function validarCumplimiento($idTarea)
     {

@@ -276,12 +276,10 @@ function removeTask(key) {
 
 function openTasksModal(planId) {
     currentPlanId = planId;
-    
-    // Resetear formulario de nueva tarea si existe
     const formDiv = document.getElementById('new-task-form');
     if(formDiv) formDiv.style.display = 'none';
     
-    // Cargar tipos de tarea en el selector (si no están cargados)
+    // Llenar select de tipos si está vacío
     const typeSelect = document.getElementById('new-task-type');
     if (typeSelect && typeSelect.options.length <= 1 && window.serverData && window.serverData.tipos) {
         window.serverData.tipos.forEach(t => {
@@ -292,12 +290,12 @@ function openTasksModal(planId) {
         });
     }
 
-    // Preparar URL y Meta Tags
     const baseMeta = document.querySelector('meta[name="base-url"]').content.replace(/\/$/, '');
-    const url = `${baseMeta}/profesional/planes/${planId}/tareas`;
+    // Agregamos timestamp para evitar caché del navegador
+    const url = `${baseMeta}/profesional/planes/${planId}/tareas?t=${new Date().getTime()}`;
 
     const list = document.getElementById('tasks-list');
-    if (!list) return alert('Error: Elemento tasks-list no encontrado en el DOM.');
+    if (!list) return alert('Modal de tareas no encontrado.');
     list.innerHTML = '<li style="padding:10px;color:#666;text-align:center;">Cargando tareas...</li>';
 
     fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
@@ -309,16 +307,13 @@ function openTasksModal(planId) {
             }
 
             list.innerHTML = '';
-            
-            // Mapa de tipos de tarea para mostrar nombre en vez de ID
-            const tipos = (window.serverData && window.serverData.tipos) ? window.serverData.tipos : [];
+            const tipos = window.serverData?.tipos || [];
             const tipoMap = {};
             tipos.forEach(t => { tipoMap[t.id_tipo_tarea] = t.nombre; });
 
             if (!json.data || json.data.length === 0) {
-                list.innerHTML = '<li class="empty-state" style="padding:20px;color:#666;text-align:center;">No hay tareas registradas para este plan.</li>';
+                list.innerHTML = '<li class="empty-state" style="padding:20px;color:#666;text-align:center;">No hay tareas registradas.</li>';
             } else {
-                // Ordenar: primero por fecha
                 json.data.sort((a, b) => new Date(a.fecha_programada) - new Date(b.fecha_programada));
 
                 json.data.forEach(t => {
@@ -327,53 +322,38 @@ function openTasksModal(planId) {
                     li.style.borderBottom = '1px solid #f1f5f9';
                     li.style.background = '#fff';
                     
-                    // Helpers de visualización
-                    const tipoNombre = tipoMap[t.id_tipo_tarea] || (t.id_tipo_tarea || 'Tarea');
-                    // Formatear fecha (cortar segundos y reemplazar T)
-                    const fecha = t.fecha_programada ? t.fecha_programada.substring(0,16).replace('T',' ') : 'Sin fecha';
-                    const estadoIcon = t.estado === 'Completada' ? '<i class="fas fa-check-circle"></i>' : '<i class="far fa-circle"></i>';
+                    const tipoNombre = tipoMap[t.id_tipo_tarea] || 'Tarea';
+                    const fecha = t.fecha_programada ? t.fecha_programada.substring(0,16).replace('T',' ') : '-';
                     const estadoStyle = t.estado === 'Completada' ? 'color:#10b981; font-weight:700;' : 'color:#f59e0b;';
-                    
-                    // --- LÓGICA NUEVA: BOTÓN DE EVIDENCIA ---
+                    const estadoIcon = t.estado === 'Completada' ? '<i class="fas fa-check-circle"></i>' : '<i class="far fa-circle"></i>';
+
+                    // --- AQUÍ ESTÁ LA LÓGICA DEL BOTÓN ---
                     let btnEvidencia = '';
-                    if (t.doc_id) {
+                    if (t.doc_id) { // Si el backend devuelve un ID, mostramos el botón
                         const downloadUrl = `${baseMeta}/profesional/documentos/download/${t.doc_id}`;
-                        // Usamos la clase btn-evidence que definimos en el CSS
                         btnEvidencia = `
-                            <a href="${downloadUrl}" target="_blank" class="btn-evidence" title="Ver comprobante: ${escapeHtml(t.doc_titulo || 'Archivo')}">
+                            <a href="${downloadUrl}" target="_blank" class="btn-evidence" title="Ver archivo: ${escapeHtml(t.doc_titulo)}">
                                 <i class="fas fa-paperclip"></i> Ver Comprobante
                             </a>
                         `;
                     }
-                    // ----------------------------------------
-
-                    // Helper simple para escapar HTML (si no tienes uno global)
-                    const safeDesc = escapeHtml(t.descripcion || '');
-                    const safeComent = escapeHtml(t.comentarios_paciente || '');
 
                     li.innerHTML = `
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:15px;">
                           <div style="flex-grow:1;">
                             <div style="font-size:1.05em; margin-bottom:6px; color:#334155;">
-                                <strong>${t.num_tarea || '#'}. ${escapeHtml(tipoNombre)}</strong>: ${safeDesc}
+                                <strong>${t.num_tarea || '#'}. ${escapeHtml(tipoNombre)}</strong>: ${escapeHtml(t.descripcion)}
                             </div>
-                            
                             <div style="font-size:0.85em; color:#64748b; margin-bottom:5px;">
-                                <i class="far fa-calendar-alt"></i> ${escapeHtml(fecha)} &nbsp; | &nbsp; 
+                                <i class="far fa-calendar-alt"></i> ${fecha} &nbsp;|&nbsp; 
                                 <span style="${estadoStyle}">${estadoIcon} ${escapeHtml(t.estado)}</span>
                             </div>
-
-                            ${t.nombre_medicamento ? `<div style="font-size:0.85em; color:#4338ca; margin-top:2px;"><i class="fas fa-pills"></i> ${escapeHtml(t.nombre_medicamento)}</div>` : ''}
-                            
-                            ${t.comentarios_paciente ? `
-                                <div style="margin-top:8px; background:#f8fafc; padding:8px 12px; border-left:3px solid #cbd5e1; border-radius:4px; font-size:0.85em; color:#475569; font-style:italic;">
-                                    <i class="fas fa-comment-dots"></i> "${safeComent}"
-                                </div>` : ''}
+                            ${t.nombre_medicamento ? `<div style="font-size:0.85em; color:#4338ca;">💊 ${escapeHtml(t.nombre_medicamento)}</div>` : ''}
+                            ${t.comentarios_paciente ? `<div style="margin-top:5px; background:#f8fafc; padding:5px; font-style:italic; color:#555;">"${escapeHtml(t.comentarios_paciente)}"</div>` : ''}
                           </div>
-
-                          <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end; min-width: 140px;">
+                          <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
                             ${btnEvidencia}
-                            <button class="btn-delete" onclick="deleteTask(${t.id || t.id_tarea})" style="font-size:0.8em; padding:4px 10px; border:1px solid #fee2e2; background:#fef2f2; color:#ef4444; border-radius:6px; cursor:pointer;">
+                            <button class="btn-delete" onclick="deleteTask(${t.id_tarea || t.id})" style="font-size:0.8em; padding:4px 8px; border:1px solid #fee2e2; background:#fef2f2; color:#ef4444; border-radius:6px;">
                                 <i class="fas fa-trash"></i> Eliminar
                             </button>
                           </div>
@@ -382,13 +362,11 @@ function openTasksModal(planId) {
                     list.appendChild(li);
                 });
             }
-
-            const modal = document.getElementById('tasks-modal');
-            if (modal) modal.classList.add('active');
+            document.getElementById('tasks-modal').classList.add('active');
         })
         .catch(err => {
             console.error(err);
-            list.innerHTML = '<li style="padding:10px;color:#c00;text-align:center;">Error de conexión.</li>';
+            list.innerHTML = '<li style="padding:10px;color:#c00;">Error de conexión.</li>';
         });
 }
 
@@ -507,7 +485,9 @@ function deleteTask(idTarea) {
 }
 
 function openProgressModal(planId) {
-    const base = document.querySelector('meta[name="base-url"]').content || '';
+    // Aseguramos que la URL base no tenga slash al final para evitar dobles slashes
+    const baseRaw = document.querySelector('meta[name="base-url"]').content || '';
+    const base = baseRaw.replace(/\/$/, ''); 
     const url = `${base}/profesional/planes/${planId}/tareas`;
 
     // Resetear vista del modal
@@ -552,8 +532,7 @@ function openProgressModal(planId) {
         // 2. Renderizar Lista
         container.innerHTML = '';
         
-        // Ordenamos para ver las completadas o pendientes primero? 
-        // Generalmente es útil ver el orden cronológico (fecha_programada)
+        // Ordenamos por fecha
         tasks.sort((a, b) => new Date(a.fecha_programada) - new Date(b.fecha_programada));
 
         tasks.forEach(t => {
@@ -567,8 +546,8 @@ function openProgressModal(planId) {
 
             // Estilos según estado
             const isCompleted = t.estado === 'Completada';
-            const badgeColor = isCompleted ? '#d1fae5' : '#fff7ed'; // Verde claro / Naranja claro
-            const textColor = isCompleted ? '#065f46' : '#9a3412';  // Verde oscuro / Naranja oscuro
+            const badgeColor = isCompleted ? '#d1fae5' : '#fff7ed';
+            const textColor = isCompleted ? '#065f46' : '#9a3412';
             const icon = isCompleted ? '✅' : '⏳';
 
             // HTML para el comentario (solo si existe)
@@ -581,6 +560,21 @@ function openProgressModal(planId) {
                     </div>
                 `;
             }
+
+            // --- LÓGICA DE EVIDENCIA (NUEVO) ---
+            let evidenceHtml = '';
+            if (t.doc_id) {
+                // Generamos enlace de descarga
+                const downloadUrl = `${base}/profesional/documentos/download/${t.doc_id}`;
+                evidenceHtml = `
+                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e2e8f0;">
+                        <a href="${downloadUrl}" target="_blank" style="color: #2563eb; font-weight: 600; font-size: 0.9em; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-paperclip"></i> Ver Comprobante Adjunto
+                        </a>
+                    </div>
+                `;
+            }
+            // -----------------------------------
 
             // Fecha formateada
             const fecha = t.fecha_programada ? t.fecha_programada.replace('T', ' ') : 'Sin fecha';
@@ -598,6 +592,7 @@ function openProgressModal(planId) {
                     </span>
                 </div>
                 ${commentHtml}
+                ${evidenceHtml} 
             `;
             container.appendChild(item);
         });

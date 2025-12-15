@@ -26,7 +26,7 @@ class DocumentoModel extends Model
     protected $validationRules = [
         'id_paciente' => 'required|is_natural_no_zero',
         'titulo' => 'required|min_length[3]',
-        'tipo' => 'required|in_list[receta,estudio,informe,otro]',
+        'tipo' => 'required|in_list[receta,estudio,informe,otro,Comprobante]', 
         'archivo' => 'required',
         'mime' => 'required',
         'tamano' => 'required|integer',
