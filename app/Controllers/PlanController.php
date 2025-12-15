@@ -6,6 +6,7 @@ use App\Models\UsuarioModel;
 use App\Models\DiagnosticoModel;
 use App\Models\TipoTareaModel;
 use App\Models\TareaModel;
+use App\Models\DocumentoModel;
 
 class PlanController extends BaseController
 {
@@ -43,6 +44,64 @@ class PlanController extends BaseController
         ];
 
         return view('dashboard_profesional', $data);
+    }
+
+    public function finalizarPlan($idPlan)
+    {
+        $planModel = new PlanModel();
+        $docModel = new DocumentoModel();
+        $db = \Config\Database::connect();
+
+        $plan = $planModel->find($idPlan);
+        if (!$plan) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Plan no encontrado']);
+        }
+
+        // Validar inputs
+        $comentario = $this->request->getPost('comentario');
+        $file = $this->request->getFile('archivo_epicrisis');
+
+        // Iniciar Transacción (para asegurar que se guarden ambos o ninguno)
+        $db->transStart();
+
+        try {
+            // 1. Actualizar el Plan (Estado y Comentario)
+            $planModel->update($idPlan, [
+                'estado' => 'Finalizado',
+                'comentario_cierre' => $comentario,
+                'fecha_fin' => date('Y-m-d') 
+            ]);
+
+            // 2. Subir Archivo Epicrisis (Si se cargó uno)
+            if ($file && $file->isValid()) {
+                $newName = $file->getRandomName();
+                $path = WRITEPATH . 'uploads/documentos';
+                
+                if (!is_dir($path)) mkdir($path, 0755, true);
+                $file->move($path, $newName);
+
+                $docModel->insert([
+                    'id_paciente' => $plan->id_paciente,
+                    'id_plan'     => $idPlan,
+                    'tipo'        => 'Epicrisis',
+                    'titulo'      => 'Epicrisis de Cierre - Plan #' . $idPlan,
+                    'archivo'     => 'documentos/' . $newName,
+                    'mime'        => $file->getClientMimeType(),
+                    'tamano'      => $file->getSize(),
+                ]);
+            }
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Error en la base de datos al finalizar.']);
+            }
+
+            return $this->response->setJSON(['success' => true, 'message' => 'Plan finalizado y epicrisis cargada.']);
+
+        } catch (\Throwable $e) {
+            return $this->response->setJSON(['success' => false, 'message' => $e->getMessage()]);
+        }
     }
 
     public function gestionPlanes()

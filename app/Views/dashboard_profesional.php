@@ -107,8 +107,40 @@
         }
 
         /* Contenedores para gráficos: altura fija para evitar "derretimiento" al redimensionar */
-        .chart-container { height: 250px; position: relative; }
-        .chart-container canvas { width: 100% !important; height: 100% !important; display: block; }
+        .chart-container {
+            height: 250px;
+            position: relative;
+        }
+
+        .chart-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
+
+        /* Botón para ver comprobante en el modal */
+        .btn-evidence {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background-color: #f0f9ff;
+            color: #0284c7;
+            border: 1px solid #bae6fd;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-evidence:hover {
+            background-color: #0284c7;
+            color: white;
+            border-color: #0284c7;
+            box-shadow: 0 2px 4px rgba(2, 132, 199, 0.2);
+        }
     </style>
 </head>
 
@@ -124,6 +156,9 @@
             </button>
             <button class="nav-btn" onclick="scrollToSection('planes')">
                 <i class="fas fa-clipboard-list" style="width:20px;"></i> Gestión de Planes
+            </button>
+            <button class="nav-btn" onclick="scrollToSection('planes-estandar')">
+                <i class="fas fa-book-medical" style="width:20px;"></i> Planes Estándar
             </button>
             <button class="nav-btn" onclick="scrollToSection('pacientes')">
                 <i class="fas fa-user-injured" style="width:20px;"></i> Mis Pacientes
@@ -147,15 +182,12 @@
                 style="margin-top: auto; background-color: #dc2626;">
                 <i class="fas fa-sign-out-alt" style="width:20px;"></i> Cerrar Sesión
             </button>
-            <button class="nav-btn" onclick="scrollToSection('planes-estandar')">
-                <i class="fas fa-book-medical" style="width:20px;"></i> Planes Estándar
-            </button>
         </nav>
     </aside>
 
     <main class="main-content">
 
-    
+
         <div id="resumen" class="entity-section">
             <div class="content-card">
                 <div class="header-section">
@@ -166,42 +198,47 @@
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 20px;">
-                    
+
                     <div class="full-width" style="width:100%; display:none;" id="kpis-filtrado">
                         <h4 style="margin:0 0 10px 0; color:#475569; border-bottom:1px solid #eee; padding-bottom:5px;">
                             <i class="fas fa-user-tag"></i> Paciente Seleccionado
                         </h4>
                         <div class="stats-grid">
                             <div class="stat-card">
-                                <div class="stat-icon" style="background:#eef2ff; color:#4338ca;"><i class="fas fa-user"></i></div>
+                                <div class="stat-icon" style="background:#eef2ff; color:#4338ca;"><i
+                                        class="fas fa-user"></i></div>
                                 <div class="stat-info">
                                     <div class="stat-value" id="kf-porcentaje">0%</div>
                                     <div class="stat-label">Cumplimiento</div>
                                 </div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-icon" style="background:#ecfeff; color:#0891b2;"><i class="fas fa-check"></i></div>
+                                <div class="stat-icon" style="background:#ecfeff; color:#0891b2;"><i
+                                        class="fas fa-check"></i></div>
                                 <div class="stat-info">
                                     <div class="stat-value" id="kf-completadas">0</div>
                                     <div class="stat-label">Completadas</div>
                                 </div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-icon" style="background:#fff7ed; color:#f97316;"><i class="fas fa-hourglass"></i></div>
+                                <div class="stat-icon" style="background:#fff7ed; color:#f97316;"><i
+                                        class="fas fa-hourglass"></i></div>
                                 <div class="stat-info">
                                     <div class="stat-value" id="kf-pendientes">0</div>
                                     <div class="stat-label">Pendientes</div>
                                 </div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-icon" style="background:#fef3c7; color:#b45309;"><i class="fas fa-calendar-week"></i></div>
+                                <div class="stat-icon" style="background:#fef3c7; color:#b45309;"><i
+                                        class="fas fa-calendar-week"></i></div>
                                 <div class="stat-info">
                                     <div class="stat-value" id="kf-tps">0</div>
                                     <div class="stat-label">Tareas/sem</div>
                                 </div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-icon" style="background:#f3e8ff; color:#7c3aed;"><i class="fas fa-fire"></i></div>
+                                <div class="stat-icon" style="background:#f3e8ff; color:#7c3aed;"><i
+                                        class="fas fa-fire"></i></div>
                                 <div class="stat-info">
                                     <div class="stat-value" id="kf-racha">0</div>
                                     <div class="stat-label">Racha Días</div>
@@ -216,61 +253,76 @@
                         </h4>
                         <div class="stats-grid">
                             <div class="stat-card">
-                                <div class="stat-icon" style="background:#ecfeff; color:#0891b2;"><i class="fas fa-percent"></i></div>
+                                <div class="stat-icon" style="background:#ecfeff; color:#0891b2;"><i
+                                        class="fas fa-percent"></i></div>
                                 <div class="stat-info">
-                                    <div class="stat-value" id="kg-porcentaje"><?= esc($kpis_general['porcentaje_completado'] ?? 0) ?>%</div>
+                                    <div class="stat-value" id="kg-porcentaje">
+                                        <?= esc($kpis_general['porcentaje_completado'] ?? 0) ?>%
+                                    </div>
                                     <div class="stat-label">Cumplimiento Global</div>
                                 </div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-icon" style="background:#f0fdf4; color:#10b981;"><i class="fas fa-check-circle"></i></div>
+                                <div class="stat-icon" style="background:#f0fdf4; color:#10b981;"><i
+                                        class="fas fa-check-circle"></i></div>
                                 <div class="stat-info">
-                                    <div class="stat-value" id="kg-completadas"><?= esc($kpis_general['tareas_completadas'] ?? 0) ?></div>
+                                    <div class="stat-value" id="kg-completadas">
+                                        <?= esc($kpis_general['tareas_completadas'] ?? 0) ?>
+                                    </div>
                                     <div class="stat-label">Tareas Completadas</div>
                                 </div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-icon" style="background:#fff7ed; color:#f97316;"><i class="fas fa-hourglass-half"></i></div>
+                                <div class="stat-icon" style="background:#fff7ed; color:#f97316;"><i
+                                        class="fas fa-hourglass-half"></i></div>
                                 <div class="stat-info">
-                                    <div class="stat-value" id="kg-pendientes"><?= esc($kpis_general['tareas_pendientes'] ?? 0) ?></div>
+                                    <div class="stat-value" id="kg-pendientes">
+                                        <?= esc($kpis_general['tareas_pendientes'] ?? 0) ?>
+                                    </div>
                                     <div class="stat-label">Tareas Pendientes</div>
                                 </div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-icon" style="background:#f3e8ff; color:#7c3aed;"><i class="fas fa-fire"></i></div>
+                                <div class="stat-icon" style="background:#f3e8ff; color:#7c3aed;"><i
+                                        class="fas fa-fire"></i></div>
                                 <div class="stat-info">
-                                    <div class="stat-value" id="kg-racha"><?= esc($kpis_general['racha_dias'] ?? 0) ?></div>
+                                    <div class="stat-value" id="kg-racha"><?= esc($kpis_general['racha_dias'] ?? 0) ?>
+                                    </div>
                                     <div class="stat-label">Racha Máxima</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px;">
+                    <div
+                        style="background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px;">
                         <div style="margin-bottom: 20px;">
                             <label style="font-weight:600; display:block; margin-bottom:8px; color:#334155;">
                                 <i class="fas fa-filter"></i> Filtrar estadísticas por paciente:
                             </label>
                             <select id="filter-paciente" class="input-styled" style="max-width: 400px;">
                                 <option value="">-- Ver Globales --</option>
-                                <?php if (!empty($listaPacientes)): foreach($listaPacientes as $pac): ?>
-                                    <?php $pid = is_object($pac) ? $pac->id_usuario : $pac['id_usuario']; ?>
-                                    <option value="<?= esc($pid) ?>">
-                                        <?= esc($pac->nombre . ' ' . $pac->apellido) ?>
-                                    </option>
-                                <?php endforeach; endif; ?>
+                                <?php if (!empty($listaPacientes)):
+                                    foreach ($listaPacientes as $pac): ?>
+                                        <?php $pid = is_object($pac) ? $pac->id_usuario : $pac['id_usuario']; ?>
+                                        <option value="<?= esc($pid) ?>">
+                                            <?= esc($pac->nombre . ' ' . $pac->apellido) ?>
+                                        </option>
+                                    <?php endforeach; endif; ?>
                             </select>
                         </div>
 
                         <div style="display:flex; gap:20px; flex-wrap:wrap;">
-                            <div style="flex: 2; min-width: 300px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <div
+                                style="flex: 2; min-width: 300px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                                 <h5 style="margin:0 0 15px 0; color:#64748b;">Evolución (Últimos 28 días)</h5>
                                 <div class="chart-container" style="height: 250px;">
                                     <canvas id="chart-daily"></canvas>
                                 </div>
                             </div>
-                            
-                            <div style="flex: 1; min-width: 250px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+
+                            <div
+                                style="flex: 1; min-width: 250px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                                 <h5 style="margin:0 0 15px 0; color:#64748b;">Por Tipo de Tarea</h5>
                                 <div class="chart-container" style="height: 250px;">
                                     <canvas id="chart-type"></canvas>
@@ -278,8 +330,8 @@
                             </div>
                         </div>
                     </div>
-                </div> 
-            </div> 
+                </div>
+            </div>
         </div>
 
         <div id="planes" class="entity-section">
@@ -290,7 +342,7 @@
                         <i class="fas fa-plus"></i> Nuevo Plan
                     </button>
                     <div class="stat-icon" style="background:#e0f2fe; color:#0284c7;">
-                            <i class="fas fa-user-injured"></i>
+                        <i class="fas fa-user-injured"></i>
                     </div>
                     <div class="stat-info">
                         <div class="stat-value"><?= esc($totalPacientes) ?></div>
@@ -359,7 +411,8 @@
                                                 title="Ver Progreso">
                                                 <i class="fas fa-chart-pie"></i>
                                             </button>
-                                            <button class="btn-edit btn-icon" onclick="togglePlanStatus(<?= esc($plan->id) ?>)"
+                                            <button class="btn-edit btn-icon"
+                                                onclick="clickEstadoPlan(<?= esc($plan->id) ?>, '<?= esc($plan->estado) ?>')"
                                                 title="Cambiar Estado"
                                                 style="background-color: #4b5563; border-color: #4b5563;">
                                                 <i class="fas fa-sync-alt"></i>
@@ -476,6 +529,13 @@
                                             <button class="btn-edit btn-icon"
                                                 onclick="alert('Funcionalidad de perfil pendiente')" title="Ver Perfil">
                                                 <i class="fas fa-user"></i>
+                                            </button>
+
+                                            <button class="btn-secondary btn-icon"
+                                                onclick="openPacDocsModal(<?= esc($paciente->id_usuario) ?>, '<?= esc($paciente->nombre . ' ' . $paciente->apellido) ?>')"
+                                                title="Gestionar Documentos"
+                                                style="background-color: #0d9488; border-color: #0d9488;">
+                                                <i class="fas fa-file-medical"></i>
                                             </button>
                                         </div>
                                     </td>
@@ -871,6 +931,112 @@
                 </form>
             </div>
         </div>
+        <div id="pac-docs-modal" class="modal">
+            <div class="modal-content" style="max-width: 800px;">
+                <div class="modal-header">
+                    <h3 id="pdm-title">Documentos del Paciente</h3>
+                    <button class="close-btn" onclick="closeModal('pac-docs-modal')">&times;</button>
+                </div>
+                <div class="modal-body">
+
+                    <div
+                        style="background:#f0f9ff; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #bae6fd;">
+                        <h4 style="margin-top:0; color:#0369a1;"><i class="fas fa-upload"></i> Cargar Nuevo Documento
+                        </h4>
+                        <form id="prof-upload-form" onsubmit="uploadPacDoc(event)" enctype="multipart/form-data"
+                            style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; align-items:end;">
+                            <input type="hidden" id="pdm-paciente-id" name="id_paciente">
+
+                            <div>
+                                <label style="font-weight:600; font-size:0.85em;">Título</label>
+                                <input type="text" name="titulo" required class="input-styled"
+                                    placeholder="Ej: Receta Enero..." style="padding:6px;">
+                            </div>
+
+                            <div>
+                                <label style="font-weight:600; font-size:0.85em;">Tipo</label>
+                                <select name="tipo" class="input-styled" required style="padding:6px;">
+                                    <option value="receta">Receta</option>
+                                    <option value="estudio">Estudio</option>
+                                    <option value="informe">Informe</option>
+                                    <option value="otro">Otro</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style="font-weight:600; font-size:0.85em;">Archivo</label>
+                                <input type="file" name="archivo" required class="input-styled" style="padding:3px;">
+                            </div>
+
+                            <div
+                                style="grid-column: 1/-1; display:flex; justify-content:space-between; align-items:center;">
+                                <div style="flex-grow:1; margin-right:10px;">
+                                    <label style="font-weight:600; font-size:0.85em;">Asociar a Plan (Opcional)</label>
+                                    <select name="id_plan" id="pdm-plan-select" class="input-styled"
+                                        style="padding:6px; width:100%;">
+                                        <option value="">-- Ninguno --</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn-save" style="height:38px; margin-top:18px;">
+                                    <i class="fas fa-paper-plane"></i> Subir
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <table style="width:100%; border-collapse:collapse; font-size:0.9em;">
+                        <thead>
+                            <tr style="background:#f8fafc; text-align:left; border-bottom:2px solid #e2e8f0;">
+                                <th style="padding:10px;">Fecha</th>
+                                <th style="padding:10px;">Tipo</th>
+                                <th style="padding:10px;">Título</th>
+                                <th style="padding:10px;">Plan</th>
+                                <th style="padding:10px; text-align:right;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pdm-list">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div id="finalize-modal" class="modal">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3>Finalizar Plan y Epicrisis</h3>
+                    <button class="close-btn" onclick="closeModal('finalize-modal')">&times;</button>
+                </div>
+                <form id="form-finalize" onsubmit="submitFinalize(event)">
+                    <div class="modal-body">
+                        <input type="hidden" id="fin-plan-id">
+
+                        <p style="color:#64748b; font-size:0.9em; margin-bottom:15px;">
+                            Al finalizar el plan, este dejará de estar vigente. Es recomendable cargar una conclusión y
+                            el archivo de epicrisis.
+                        </p>
+
+                        <div class="form-group">
+                            <label style="font-weight:600;">Comentario del Profesional (Conclusiones)</label>
+                            <textarea id="fin-comentario" name="comentario" rows="4" class="input-styled"
+                                style="width:100%;" required
+                                placeholder="Describa la evolución del paciente y motivo de alta..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label style="font-weight:600;">Archivo de Epicrisis (PDF/DOC)</label>
+                            <input type="file" name="archivo_epicrisis" class="input-styled" accept=".pdf,.doc,.docx"
+                                required>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="text-align:right;">
+                        <button type="button" class="btn-cancel"
+                            onclick="closeModal('finalize-modal')">Cancelar</button>
+                        <button type="submit" class="btn-save" style="background-color:#059669;">Finalizar
+                            Tratamiento</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </main>
 
     <?= view('planes/modal_form', [
@@ -883,54 +1049,183 @@
     <?= view('planes/tasks_modal') ?>
 
     <script>
-    window.serverData = {
-        // Datos básicos
-        pacientes: <?= json_encode($todosLosPacientes ?? []) ?>,
-        diagnosticos: <?= json_encode($listaDiagnosticos ?? []) ?>,
-        tipos: <?= json_encode($listaTiposTarea ?? []) ?>,
-        medicamentos: <?= json_encode($listaMedicamentos ?? []) ?>,
-        role: <?= json_encode(session()->get('nombre_rol') ?? '') ?>,
-        
-        // Datos para Gráficos y KPIs (si existen)
-        kpis: <?= json_encode($kpis_general ?? []) ?>,
-        charts: <?= json_encode($charts ?? []) ?>
-    };
+        // --- GESTIÓN DOCUMENTOS PACIENTE (PROFESIONAL) ---
 
-    // Exponer variables locales que usa el IIFE de inicialización de charts
-    const charts = window.serverData.charts || {};
-    const kpis = window.serverData.kpis || {};
-</script>
+        function openPacDocsModal(idPaciente, nombrePaciente) {
+            const modal = document.getElementById('pac-docs-modal');
+            document.getElementById('pdm-title').innerText = `Documentos de: ${nombrePaciente}`;
+            document.getElementById('pdm-paciente-id').value = idPaciente;
+
+            // 1. Cargar Planes del paciente para el select (Reutilizamos la lógica de lista de planes si la tenemos o filtramos)
+            // Para simplificar, filtraremos de window.serverData.planes si estuvieran disponibles, 
+            // sino dejamos el select vacío o hacemos un fetch.
+            // Vamos a asumir que quieres cargar solo documentos por ahora.
+
+            loadPacDocs(idPaciente);
+            modal.classList.add('active');
+        }
+
+        function loadPacDocs(idPaciente) {
+            const tbody = document.getElementById('pdm-list');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Cargando...</td></tr>';
+
+            const baseMeta = document.querySelector('meta[name="base-url"]').content.replace(/\/$/, '');
+
+            fetch(`${baseMeta}/profesional/documentos/paciente/${idPaciente}`)
+                .then(r => r.json())
+                .then(res => {
+                    tbody.innerHTML = '';
+                    if (!res.success || !res.data || res.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#888;">No hay documentos.</td></tr>';
+                        return;
+                    }
+
+                    res.data.forEach(d => {
+                        const planName = d.nombre_plan || '-';
+                        const downloadUrl = `${baseMeta}/profesional/documentos/download/${d.id}`;
+
+                        tbody.innerHTML += `
+                    <tr style="border-bottom:1px solid #eee;">
+                        <td style="padding:8px;">${d.created_at}</td>
+                        <td style="padding:8px;"><span class="day-badge">${d.tipo}</span></td>
+                        <td style="padding:8px;"><strong>${d.titulo}</strong></td>
+                        <td style="padding:8px; color:#64748b;">${planName}</td>
+                        <td style="padding:8px; text-align:right;">
+                            <a href="${downloadUrl}" target="_blank" class="btn-view btn-icon" title="Descargar" style="display:inline-flex; text-decoration:none;">
+                                <i class="fas fa-download"></i>
+                            </a>
+                            <button class="btn-delete btn-icon" onclick="deletePacDoc(${d.id}, ${idPaciente})" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                    });
+                })
+                .catch(err => {
+                    console.error(err);
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Error al cargar.</td></tr>';
+                });
+        }
+
+        function uploadPacDoc(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const idPaciente = document.getElementById('pdm-paciente-id').value;
+
+            const baseMeta = document.querySelector('meta[name="base-url"]').content.replace(/\/$/, '');
+            const token = document.querySelector('meta[name="csrf-token"]').content;
+
+            // Feedback visual
+            const btn = form.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
+            btn.disabled = true;
+
+            fetch(`${baseMeta}/profesional/documentos/upload`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': token
+                },
+                body: formData
+            })
+                .then(r => r.json())
+                .then(res => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+
+                    if (res.success) {
+                        alert('Documento subido correctamente');
+                        form.reset();
+                        document.getElementById('pdm-paciente-id').value = idPaciente; // Restaurar ID tras reset
+                        loadPacDocs(idPaciente);
+                    } else {
+                        alert('Error: ' + res.message);
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    alert('Error de conexión');
+                });
+        }
+
+        function deletePacDoc(idDoc, idPaciente) {
+            if (!confirm('¿Estás seguro de eliminar este documento permanentemente?')) return;
+
+            const baseMeta = document.querySelector('meta[name="base-url"]').content.replace(/\/$/, '');
+            const token = document.querySelector('meta[name="csrf-token"]').content;
+
+            fetch(`${baseMeta}/profesional/documentos/${idDoc}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': token
+                }
+            })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status === 'success') {
+                        loadPacDocs(idPaciente);
+                    } else {
+                        alert('Error: ' + res.message);
+                    }
+                });
+        }
+    </script>
+
+    <script>
+        window.serverData = {
+            // Datos básicos
+            pacientes: <?= json_encode($todosLosPacientes ?? []) ?>,
+            diagnosticos: <?= json_encode($listaDiagnosticos ?? []) ?>,
+            tipos: <?= json_encode($listaTiposTarea ?? []) ?>,
+            medicamentos: <?= json_encode($listaMedicamentos ?? []) ?>,
+            role: <?= json_encode(session()->get('nombre_rol') ?? '') ?>,
+
+            // Datos para Gráficos y KPIs (si existen)
+            kpis: <?= json_encode($kpis_general ?? []) ?>,
+            charts: <?= json_encode($charts ?? []) ?>
+        };
+
+        // Exponer variables locales que usa el IIFE de inicialización de charts
+        const charts = window.serverData.charts || {};
+        const kpis = window.serverData.kpis || {};
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-    (function initCharts(){
-        // Asegurarse de tener el namespace global para actualizaciones
-        window.profCharts = window.profCharts || {};
+        (function initCharts() {
+            // Asegurarse de tener el namespace global para actualizaciones
+            window.profCharts = window.profCharts || {};
 
-        // Daily chart
-        const dayEl = document.getElementById('chart-daily');
-        if (dayEl && charts.daily) {
-            const ctx = dayEl.getContext('2d');
-            window.profCharts.daily = new Chart(ctx, {
-                type: 'line',
-                data: { labels: charts.daily.labels, datasets: [{ label: 'Completadas', data: charts.daily.data, borderColor: '#2563eb', backgroundColor: 'rgba(96,165,250,0.2)', fill: true }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-            });
-        }
+            // Daily chart
+            const dayEl = document.getElementById('chart-daily');
+            if (dayEl && charts.daily) {
+                const ctx = dayEl.getContext('2d');
+                window.profCharts.daily = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: charts.daily.labels, datasets: [{ label: 'Completadas', data: charts.daily.data, borderColor: '#2563eb', backgroundColor: 'rgba(96,165,250,0.2)', fill: true }] },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+                });
+            }
 
-        // By Type chart -> usa el ID del canvas presente en la vista: chart-type
-        const typeEl = document.getElementById('chart-type');
-        if (typeEl && charts.byType) {
-            const ctx = typeEl.getContext('2d');
-            window.profCharts.byType = new Chart(ctx, {
-                type: 'doughnut',
-                data: { labels: charts.byType.labels, datasets: [{ data: charts.byType.data, backgroundColor: ['#60A5FA','#34D399','#FBBF24','#F472B6','#A78BFA'] }] },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-        }
+            // By Type chart -> usa el ID del canvas presente en la vista: chart-type
+            const typeEl = document.getElementById('chart-type');
+            if (typeEl && charts.byType) {
+                const ctx = typeEl.getContext('2d');
+                window.profCharts.byType = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: { labels: charts.byType.labels, datasets: [{ data: charts.byType.data, backgroundColor: ['#60A5FA', '#34D399', '#FBBF24', '#F472B6', '#A78BFA'] }] },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
 
             // Weekly chart removed intentionally
-    })();
+        })();
     </script>
     <meta name="base-url" content="<?= base_url() ?>">
     <meta name="csrf-token" content="<?= csrf_hash() ?>">
@@ -950,7 +1245,7 @@
         }
     </script>
 
-     
+
     <script>
         let tempStandardTasks = []; // Array temporal
 
@@ -1179,6 +1474,68 @@
         }
     </script>
     <script>
+        // Manejo de clicks en el botón de estado
+        function clickEstadoPlan(idPlan, estadoActual) {
+            if (estadoActual === 'Vigente') {
+                // Si está vigente, ofrecemos finalizarlo abriendo el modal
+                openFinalizeModal(idPlan);
+            } else {
+                // Si ya está finalizado o cancelado, quizás quieras reabrirlo o no hacer nada.
+                // Aquí dejo una lógica simple para reactivar si quisieras, o solo alertar.
+                if (confirm('El plan está finalizado. ¿Desea reactivarlo?')) {
+                    // Llamar a tu antigua función togglePlanStatus o crear una para reactivar
+                    // togglePlanStatus(idPlan); 
+                }
+            }
+        }
+
+        function openFinalizeModal(idPlan) {
+            document.getElementById('fin-plan-id').value = idPlan;
+            document.getElementById('form-finalize').reset();
+            document.getElementById('finalize-modal').classList.add('active');
+        }
+
+        function submitFinalize(e) {
+            e.preventDefault();
+            const idPlan = document.getElementById('fin-plan-id').value;
+            const formData = new FormData(e.target);
+
+            const baseMeta = document.querySelector('meta[name="base-url"]').content.replace(/\/$/, '');
+            const token = document.querySelector('meta[name="csrf-token"]').content;
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerText;
+            btn.innerText = "Procesando...";
+            btn.disabled = true;
+
+            fetch(`${baseMeta}/profesional/planes/${idPlan}/finalizar`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': token
+                },
+                body: formData
+            })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success) {
+                        alert(res.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + res.message);
+                        btn.innerText = originalText;
+                        btn.disabled = false;
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Error de conexión');
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                });
+        }
+    </script>
+    <script>
         // Configuración de campos para el modal dinámico
         // Configuración de campos para el modal dinámico
         const formConfigs = {
@@ -1255,7 +1612,7 @@
             form.action = actionUrl;
             modal.classList.add('active');
         }
-</script>
+    </script>
     <script>
         // helpers: crear o actualizar charts dinámicamente
         function createChartsFromData(charts) {
@@ -1276,7 +1633,7 @@
                 const ctx2 = typeEl.getContext('2d');
                 window.profCharts.byType = new Chart(ctx2, {
                     type: 'doughnut',
-                    data: { labels: charts.byType.labels, datasets: [{ data: charts.byType.data, backgroundColor: ['#60A5FA','#34D399','#FBBF24','#F472B6','#A78BFA'] }] },
+                    data: { labels: charts.byType.labels, datasets: [{ data: charts.byType.data, backgroundColor: ['#60A5FA', '#34D399', '#FBBF24', '#F472B6', '#A78BFA'] }] },
                     options: { responsive: true, maintainAspectRatio: false }
                 });
             }
@@ -1302,7 +1659,7 @@
         // Reutilizable: actualiza KPIs en DOM (prefix: kg | kf)
         function setKpiValues(prefix, data) {
             if (!data) return;
-            const map = { 'porcentaje_completado':'porcentaje', 'tareas_completadas':'completadas', 'tareas_pendientes':'pendientes', 'tareas_por_semana':'tps', 'racha_dias':'racha' };
+            const map = { 'porcentaje_completado': 'porcentaje', 'tareas_completadas': 'completadas', 'tareas_pendientes': 'pendientes', 'tareas_por_semana': 'tps', 'racha_dias': 'racha' };
             Object.keys(map).forEach(k => {
                 const id = `${prefix}-${map[k]}`;
                 const el = document.getElementById(id);
@@ -1311,10 +1668,10 @@
             });
         }
 
-        document.getElementById('filter-paciente').addEventListener('change', function(e){
+        document.getElementById('filter-paciente').addEventListener('change', function (e) {
             const val = e.target.value;
             const baseMeta = document.querySelector('meta[name="base-url"]');
-            const base = baseMeta ? baseMeta.content.replace(/\/$/,'') : '';
+            const base = baseMeta ? baseMeta.content.replace(/\/$/, '') : '';
             const url = val ? `${base}/profesional/kpis?paciente=${val}` : `${base}/profesional/kpis`;
 
             fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' })
@@ -1354,7 +1711,7 @@
                     alert('Error de conexión al obtener métricas.');
                 });
         });
-    
+
         function openStandardPlanModal(id, nombre) {
             const modal = document.getElementById('standard-plan-modal');
             const title = document.getElementById('sp-modal-title');
@@ -1507,10 +1864,7 @@
                     else alert('Error al eliminar.');
                 });
         }
-
-
-
-
     </script>
 </body>
-</html> 
+
+</html>

@@ -142,49 +142,96 @@ class TareaController extends BaseController
     // Obtener tareas de un plan (ruta ajax)
     public function porPlan($idPlan)
     {
-    $planModel = new PlanModel();
-    $plan = $planModel->find($idPlan);
-    $userId = $this->session->get('id_usuario');
-    $rol = $this->session->get('nombre_rol');
+        $planModel = new PlanModel();
+        $plan = $planModel->find($idPlan);
+        $userId = $this->session->get('id_usuario');
+        $rol = $this->session->get('nombre_rol');
 
-    $autorizado = ($rol === 'Profesional' && $plan->id_profesional == $userId)
-        || ($rol === 'Paciente' && $plan->id_paciente == $userId)
-        || ($rol === 'Administrador');
+        $autorizado = ($rol === 'Profesional' && $plan->id_profesional == $userId)
+            || ($rol === 'Paciente' && $plan->id_paciente == $userId)
+            || ($rol === 'Administrador');
 
-    if (! $plan || ! $autorizado) {
-        return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'No autorizado']);
-    }
+        if (! $plan || ! $autorizado) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'No autorizado']);
+        }
 
-    $tareaModel = new TareaModel();
-    return $this->response->setJSON([
-        'success' => true,
-        'data' => $tareaModel->where('id_plan', $idPlan)->findAll(),
-    ]);
+        $tareaModel = new TareaModel();
+
+        $tareas = $tareaModel->select('tareas.*, documentos.id as doc_id, documentos.archivo as doc_archivo, documentos.titulo as doc_titulo')
+                             ->join('documentos', 'documentos.id_tarea = tareas.id_tarea', 'left') 
+                             ->where('tareas.id_plan', $idPlan)
+                             ->orderBy('tareas.fecha_programada', 'ASC')
+                             ->findAll();
+
+        return $this->response->setJSON([
+            'success' => true,
+            'data' => $tareas,
+        ]);
     }
 
     // HU08: Paciente completa tarea
     public function registrarProgreso($idTarea)
-{
-    $tareaModel = new TareaModel();
-    $planModel = new PlanModel();
-    $tarea = $tareaModel->find($idTarea);
+    {
+        $tareaModel = new \App\Models\TareaModel();
+        $docModel = new \App\Models\DocumentoModel();
+        $planModel = new \App\Models\PlanModel(); // Necesario para obtener id_plan
+        $userId = $this->session->get('id_usuario');
 
-    if (! $tarea) {
-        return redirect()->back()->with('error', 'Tarea inexistente.');
-    }
+        // Validar que la tarea exista y pertenezca a un plan del usuario
+        // (Hacemos un join o doble consulta para seguridad)
+        $tarea = $tareaModel->find($idTarea);
+        
+        if (!$tarea) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Tarea no encontrada']);
+        }
 
-    $plan = $planModel->find($tarea->id_plan);
-    $idPaciente = $this->session->get('id_usuario');
+        // Verificar que el plan pertenece al paciente
+        $plan = $planModel->where('id', $tarea->id_plan)->where('id_paciente', $userId)->first();
+        if (!$plan) {
+            return $this->response->setJSON(['success' => false, 'message' => 'No autorizado']);
+        }
 
-    if ($plan->id_paciente != $idPaciente) {
-        return redirect()->back()->with('error', 'No puedes modificar esta tarea.');
-    }
+        // Obtener archivo (si existe)
+        $file = $this->request->getFile('evidencia');
+        
+        // Iniciar Transacción
+        $db = \Config\Database::connect();
+        $db->transStart();
 
-    $comentarios = $this->request->getPost('comentarios') ?? '';
-    $ok = $tareaModel->marcarComoCompletada($idTarea, $comentarios);
+        try {
+            // 1. Si hay archivo, lo subimos como 'Evidencia'
+            if ($file && $file->isValid()) {
+                $newName = $file->getRandomName();
+                $path = WRITEPATH . 'uploads/documentos';
+                
+                if (!is_dir($path)) mkdir($path, 0755, true);
+                $file->move($path, $newName);
 
-    return redirect()->to(base_url('paciente'))
-        ->with($ok ? 'success' : 'error', $ok ? 'Tarea completada.' : 'No se pudo registrar el progreso.');
+                $docModel->insert([
+                    'id_paciente' => $userId,
+                    'id_plan'     => $plan->id,
+                    'id_tarea'    => $idTarea, // Vinculación clave
+                    'tipo'        => 'Comprobante',
+                    'titulo'      => 'Comprobante: ' . $tarea->descripcion,
+                    'archivo'     => 'documentos/' . $newName,
+                    'mime'        => $file->getClientMimeType(),
+                    'tamano'      => $file->getSize(),
+                ]);
+            }
+
+            // 2. Marcar tarea como completada
+            $tareaModel->update($idTarea, [
+                'estado' => 'Completada',
+                'fecha_realizacion' => date('Y-m-d H:i:s')
+            ]);
+
+            $db->transComplete();
+
+            return $this->response->setJSON(['success' => true, 'message' => 'Tarea completada exitosamente.']);
+
+        } catch (\Throwable $e) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Error al guardar: ' . $e->getMessage()]);
+        }
     }
 
     // HU09: Profesional valida cumplimiento

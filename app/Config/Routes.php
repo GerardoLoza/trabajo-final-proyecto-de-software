@@ -140,6 +140,11 @@ $routes->group('profesional', ['filter' => 'auth:Profesional'], static function 
 
     $routes->get('planes-estandar/(:num)/tareas', 'TareaEstandarController::indexPorPlan/$1');
     $routes->post('planes-estandar/asignar', 'PlanEstandarController::assign');
+    $routes->get('documentos/paciente/(:num)', 'DocumentoController::listByPatient/$1');
+    $routes->post('documentos/upload', 'DocumentoController::uploadProfesional');
+    $routes->delete('documentos/(:num)', 'DocumentoController::delete/$1');
+    $routes->get('documentos/download/(:num)', 'DocumentoController::downloadProf/$1');
+    $routes->post('planes/(:num)/finalizar', 'PlanController::finalizarPlan/$1');
 });
 // ===================================================================
 // 5. RUTAS DE PACIENTE

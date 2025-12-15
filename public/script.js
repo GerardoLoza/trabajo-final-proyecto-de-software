@@ -272,14 +272,16 @@ function removeTask(key) {
 
 /* ====== Modal lista Tareas (Ajax) ====== */
 
+/* ====== Reemplazar la función existente en public/script.js ====== */
+
 function openTasksModal(planId) {
-    currentPlanId = planId; // GUARDAMOS EL ID DEL PLAN
+    currentPlanId = planId;
     
-    // Resetear formulario de nueva tarea
+    // Resetear formulario de nueva tarea si existe
     const formDiv = document.getElementById('new-task-form');
     if(formDiv) formDiv.style.display = 'none';
     
-    // Cargar tipos de tarea en el select del formulario nuevo (si no están cargados)
+    // Cargar tipos de tarea en el selector (si no están cargados)
     const typeSelect = document.getElementById('new-task-type');
     if (typeSelect && typeSelect.options.length <= 1 && window.serverData && window.serverData.tipos) {
         window.serverData.tipos.forEach(t => {
@@ -290,12 +292,13 @@ function openTasksModal(planId) {
         });
     }
 
-    const base = document.querySelector('meta[name="base-url"]').content || '';
-    const url = `${base}/profesional/planes/${planId}/tareas`;
+    // Preparar URL y Meta Tags
+    const baseMeta = document.querySelector('meta[name="base-url"]').content.replace(/\/$/, '');
+    const url = `${baseMeta}/profesional/planes/${planId}/tareas`;
 
     const list = document.getElementById('tasks-list');
-    if (!list) return alert('Modal de tareas no encontrado en la página.');
-    list.innerHTML = '<li style="padding:10px;color:#666;">Cargando...</li>';
+    if (!list) return alert('Error: Elemento tasks-list no encontrado en el DOM.');
+    list.innerHTML = '<li style="padding:10px;color:#666;text-align:center;">Cargando tareas...</li>';
 
     fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(r => r.json())
@@ -306,31 +309,73 @@ function openTasksModal(planId) {
             }
 
             list.innerHTML = '';
+            
+            // Mapa de tipos de tarea para mostrar nombre en vez de ID
             const tipos = (window.serverData && window.serverData.tipos) ? window.serverData.tipos : [];
             const tipoMap = {};
             tipos.forEach(t => { tipoMap[t.id_tipo_tarea] = t.nombre; });
 
             if (!json.data || json.data.length === 0) {
-                list.innerHTML = '<li class="empty-state" style="padding:12px;color:#666;">No hay tareas para este plan.</li>';
+                list.innerHTML = '<li class="empty-state" style="padding:20px;color:#666;text-align:center;">No hay tareas registradas para este plan.</li>';
             } else {
-                // Ordenar visualmente por num_tarea si viene del server, o fecha
-                json.data.sort((a, b) => a.num_tarea - b.num_tarea);
+                // Ordenar: primero por fecha
+                json.data.sort((a, b) => new Date(a.fecha_programada) - new Date(b.fecha_programada));
 
                 json.data.forEach(t => {
                     const li = document.createElement('li');
-                    li.style.padding = '10px';
-                    li.style.borderBottom = '1px solid #eee';
-                    const tipoNombre = tipoMap[t.id_tipo_tarea] || (t.id_tipo_tarea || 'Tipo N/D');
-                    const fecha = t.fecha_programada ? t.fecha_programada.replace('T',' ') : 'Sin fecha';
+                    li.style.padding = '15px';
+                    li.style.borderBottom = '1px solid #f1f5f9';
+                    li.style.background = '#fff';
                     
+                    // Helpers de visualización
+                    const tipoNombre = tipoMap[t.id_tipo_tarea] || (t.id_tipo_tarea || 'Tarea');
+                    // Formatear fecha (cortar segundos y reemplazar T)
+                    const fecha = t.fecha_programada ? t.fecha_programada.substring(0,16).replace('T',' ') : 'Sin fecha';
+                    const estadoIcon = t.estado === 'Completada' ? '<i class="fas fa-check-circle"></i>' : '<i class="far fa-circle"></i>';
+                    const estadoStyle = t.estado === 'Completada' ? 'color:#10b981; font-weight:700;' : 'color:#f59e0b;';
+                    
+                    // --- LÓGICA NUEVA: BOTÓN DE EVIDENCIA ---
+                    let btnEvidencia = '';
+                    if (t.doc_id) {
+                        const downloadUrl = `${baseMeta}/profesional/documentos/download/${t.doc_id}`;
+                        // Usamos la clase btn-evidence que definimos en el CSS
+                        btnEvidencia = `
+                            <a href="${downloadUrl}" target="_blank" class="btn-evidence" title="Ver comprobante: ${escapeHtml(t.doc_titulo || 'Archivo')}">
+                                <i class="fas fa-paperclip"></i> Ver Comprobante
+                            </a>
+                        `;
+                    }
+                    // ----------------------------------------
+
+                    // Helper simple para escapar HTML (si no tienes uno global)
+                    const safeDesc = escapeHtml(t.descripcion || '');
+                    const safeComent = escapeHtml(t.comentarios_paciente || '');
+
                     li.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
-                          <div>
-                            <strong>${t.num_tarea}. ${escapeHtml(tipoNombre)}:</strong> ${escapeHtml(t.descripcion || '')} <br>
-                            <small style="color:#666">📅 ${escapeHtml(fecha)} — Estado: <em>${escapeHtml(t.estado)}</em></small>
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:15px;">
+                          <div style="flex-grow:1;">
+                            <div style="font-size:1.05em; margin-bottom:6px; color:#334155;">
+                                <strong>${t.num_tarea || '#'}. ${escapeHtml(tipoNombre)}</strong>: ${safeDesc}
+                            </div>
+                            
+                            <div style="font-size:0.85em; color:#64748b; margin-bottom:5px;">
+                                <i class="far fa-calendar-alt"></i> ${escapeHtml(fecha)} &nbsp; | &nbsp; 
+                                <span style="${estadoStyle}">${estadoIcon} ${escapeHtml(t.estado)}</span>
+                            </div>
+
+                            ${t.nombre_medicamento ? `<div style="font-size:0.85em; color:#4338ca; margin-top:2px;"><i class="fas fa-pills"></i> ${escapeHtml(t.nombre_medicamento)}</div>` : ''}
+                            
+                            ${t.comentarios_paciente ? `
+                                <div style="margin-top:8px; background:#f8fafc; padding:8px 12px; border-left:3px solid #cbd5e1; border-radius:4px; font-size:0.85em; color:#475569; font-style:italic;">
+                                    <i class="fas fa-comment-dots"></i> "${safeComent}"
+                                </div>` : ''}
                           </div>
-                          <div style="display:flex; gap:8px;">
-                            <button class="btn-delete" onclick="deleteTask(${t.id_tarea})">Eliminar</button>
+
+                          <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end; min-width: 140px;">
+                            ${btnEvidencia}
+                            <button class="btn-delete" onclick="deleteTask(${t.id || t.id_tarea})" style="font-size:0.8em; padding:4px 10px; border:1px solid #fee2e2; background:#fef2f2; color:#ef4444; border-radius:6px; cursor:pointer;">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
                           </div>
                         </div>
                     `;
@@ -343,8 +388,19 @@ function openTasksModal(planId) {
         })
         .catch(err => {
             console.error(err);
-            list.innerHTML = '<li style="padding:10px;color:#c00;">Error al solicitar las tareas.</li>';
+            list.innerHTML = '<li style="padding:10px;color:#c00;text-align:center;">Error de conexión.</li>';
         });
+}
+
+// Helper simple por si no lo tienes definido globalmente
+function escapeHtml(text) {
+  if (!text) return text;
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function toggleNewTaskForm() {
