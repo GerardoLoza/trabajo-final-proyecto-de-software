@@ -295,7 +295,7 @@ class DashboardController extends BaseController
             'selected_paciente' => $selectedPaciente,
  
             // Datos para gráficas (nombre coherente)
-            'charts' => $charts,,
+            'charts' => $charts,
             'listaPlanesEstandar' => $planEstandarModel->findAll()
         ];
 

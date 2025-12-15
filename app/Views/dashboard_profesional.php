@@ -155,6 +155,7 @@
 
     <main class="main-content">
 
+    
         <div id="resumen" class="entity-section">
             <div class="content-card">
                 <div class="header-section">
@@ -164,119 +165,121 @@
                     </button>
                 </div>
 
-                <div class="stats-grid">
-                    <!-- Selector de paciente movido debajo de KPIs generales (se mostrará junto a los gráficos) -->
-
-                        <!-- KPIs Filtrados por paciente (si existe selección) -->
-                        <?php if (!empty($kpis_filtrado)): $kf = $kpis_filtrado; ?>
-                            <div class="full-width" style="width:100%; margin-top:12px;" id="kpis-filtrado">
-                                <h4 style="margin:0 0 8px 0;">KPIs para el paciente seleccionado</h4>
-                                <div class="kpi-cards">
-                                    <div class="stat-card">
-                                        <div class="stat-icon" style="background:#eef2ff; color:#4338ca;"><i class="fas fa-user"></i></div>
-                                        <div class="stat-info">
-                                            <div class="stat-value" id="kf-porcentaje"><?= esc($kf['porcentaje_completado'] ?? 0) ?>%</div>
-                                            <div class="stat-label">Cumplimiento</div>
-                                        </div>
-                                    </div>
-                                    <div class="stat-card">
-                                        <div class="stat-icon" style="background:#ecfeff; color:#0891b2;"><i class="fas fa-check"></i></div>
-                                        <div class="stat-info">
-                                            <div class="stat-value" id="kf-completadas"><?= esc($kf['tareas_completadas'] ?? 0) ?></div>
-                                            <div class="stat-label">Completadas</div>
-                                        </div>
-                                    </div>
-                                    <div class="stat-card">
-                                        <div class="stat-icon" style="background:#fff7ed; color:#f97316;"><i class="fas fa-hourglass"></i></div>
-                                        <div class="stat-info">
-                                            <div class="stat-value" id="kf-pendientes"><?= esc($kf['tareas_pendientes'] ?? 0) ?></div>
-                                            <div class="stat-label">Pendientes</div>
-                                        </div>
-                                    </div>
-                                    <div class="stat-card">
-                                        <div class="stat-icon" style="background:#fef3c7; color:#b45309;"><i class="fas fa-calendar-week"></i></div>
-                                        <div class="stat-info">
-                                            <div class="stat-value" id="kf-tps"><?= esc($kf['tareas_por_semana'] ?? 0) ?></div>
-                                            <div class="stat-label">Tareas / semana</div>
-                                        </div>
-                                    </div>
-                                    <div class="stat-card">
-                                        <div class="stat-icon" style="background:#f3e8ff; color:#7c3aed;"><i class="fas fa-fire"></i></div>
-                                        <div class="stat-info">
-                                            <div class="stat-value" id="kf-racha"><?= esc($kf['racha_dias'] ?? 0) ?></div>
-                                            <div class="stat-label">Racha (días)</div>
-                                        </div>
-                                    </div>
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    
+                    <div class="full-width" style="width:100%; display:none;" id="kpis-filtrado">
+                        <h4 style="margin:0 0 10px 0; color:#475569; border-bottom:1px solid #eee; padding-bottom:5px;">
+                            <i class="fas fa-user-tag"></i> Paciente Seleccionado
+                        </h4>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:#eef2ff; color:#4338ca;"><i class="fas fa-user"></i></div>
+                                <div class="stat-info">
+                                    <div class="stat-value" id="kf-porcentaje">0%</div>
+                                    <div class="stat-label">Cumplimiento</div>
                                 </div>
                             </div>
-                        <?php elseif (isset($selected_paciente) && !$kpis_filtrado): ?>
-                            <div style="width:100%; margin-top:12px; color:#666;">El paciente seleccionado no tiene planes/tareas para calcular métricas.</div>
-                        <?php endif; ?>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:#ecfeff; color:#0891b2;"><i class="fas fa-check"></i></div>
+                                <div class="stat-info">
+                                    <div class="stat-value" id="kf-completadas">0</div>
+                                    <div class="stat-label">Completadas</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:#fff7ed; color:#f97316;"><i class="fas fa-hourglass"></i></div>
+                                <div class="stat-info">
+                                    <div class="stat-value" id="kf-pendientes">0</div>
+                                    <div class="stat-label">Pendientes</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:#fef3c7; color:#b45309;"><i class="fas fa-calendar-week"></i></div>
+                                <div class="stat-info">
+                                    <div class="stat-value" id="kf-tps">0</div>
+                                    <div class="stat-label">Tareas/sem</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:#f3e8ff; color:#7c3aed;"><i class="fas fa-fire"></i></div>
+                                <div class="stat-info">
+                                    <div class="stat-value" id="kf-racha">0</div>
+                                    <div class="stat-label">Racha Días</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                        <!-- KPIs Generales (se muestran debajo del filtro por paciente) -->
-                        <?php $kg = $kpis_general ?? []; ?>
-             <div class="full-width" style="width:100%; margin-top:12px;" id="kpis-generales">
-                 <h4 style="margin:0 0 8px 0;">KPIs Generales (todos los pacientes)</h4>
-                 <div class="kpi-cards">
-                     <div class="stat-card">
-                         <div class="stat-icon" style="background:#ecfeff; color:#0891b2;"><i class="fas fa-percent"></i></div>
-                        <div class="stat-info"><div class="stat-value" id="kg-porcentaje"><?= esc($kg['porcentaje_completado'] ?? 0) ?>%</div><div class="stat-label">Cumplimiento Global</div></div>
-                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background:#f0fdf4; color:#10b981;"><i class="fas fa-check-circle"></i></div>
-                        <div class="stat-info"><div class="stat-value" id="kg-completadas"><?= esc($kg['tareas_completadas'] ?? 0) ?></div><div class="stat-label">Tareas Completadas</div></div>
+                    <div class="full-width" style="width:100%;" id="kpis-generales">
+                        <h4 style="margin:0 0 10px 0; color:#475569; border-bottom:1px solid #eee; padding-bottom:5px;">
+                            <i class="fas fa-globe"></i> Métricas Globales
+                        </h4>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:#ecfeff; color:#0891b2;"><i class="fas fa-percent"></i></div>
+                                <div class="stat-info">
+                                    <div class="stat-value" id="kg-porcentaje"><?= esc($kpis_general['porcentaje_completado'] ?? 0) ?>%</div>
+                                    <div class="stat-label">Cumplimiento Global</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:#f0fdf4; color:#10b981;"><i class="fas fa-check-circle"></i></div>
+                                <div class="stat-info">
+                                    <div class="stat-value" id="kg-completadas"><?= esc($kpis_general['tareas_completadas'] ?? 0) ?></div>
+                                    <div class="stat-label">Tareas Completadas</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:#fff7ed; color:#f97316;"><i class="fas fa-hourglass-half"></i></div>
+                                <div class="stat-info">
+                                    <div class="stat-value" id="kg-pendientes"><?= esc($kpis_general['tareas_pendientes'] ?? 0) ?></div>
+                                    <div class="stat-label">Tareas Pendientes</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:#f3e8ff; color:#7c3aed;"><i class="fas fa-fire"></i></div>
+                                <div class="stat-info">
+                                    <div class="stat-value" id="kg-racha"><?= esc($kpis_general['racha_dias'] ?? 0) ?></div>
+                                    <div class="stat-label">Racha Máxima</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background:#fff7ed; color:#f97316;"><i class="fas fa-hourglass-half"></i></div>
-                        <div class="stat-info"><div class="stat-value" id="kg-pendientes"><?= esc($kg['tareas_pendientes'] ?? 0) ?></div><div class="stat-label">Tareas Pendientes</div></div>
-                    </div>
-                    <!-- tarjeta 'Tareas / semana' eliminada por solicitud -->
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background:#f3e8ff; color:#7c3aed;"><i class="fas fa-fire"></i></div>
-                        <div class="stat-info"><div class="stat-value" id="kg-racha"><?= esc($kg['racha_dias'] ?? 0) ?></div><div class="stat-label">Racha (días seg.)</div></div>
-                    </div>
-                 </div>
-             </div>
-                </div>
-                
-                <div style="margin-top:20px; display:flex; flex-direction:column; gap:18px;">
-                    <!-- Filtro ahora en su propia fila encima de los gráficos -->
-                    <div style="width:100%;">
-                        <div style="flex:0 1 260px; max-width:720px; background:#fff; padding:14px; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
-                            <label style="font-weight:600; display:block; margin-bottom:8px; color:#334155;">Filtrar estadísticas por paciente</label>
-                            <select id="filter-paciente" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid #ccc;">
-                                <option value="">Todas las estadísticas (Global)</option>
+
+                    <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 10px;">
+                        <div style="margin-bottom: 20px;">
+                            <label style="font-weight:600; display:block; margin-bottom:8px; color:#334155;">
+                                <i class="fas fa-filter"></i> Filtrar estadísticas por paciente:
+                            </label>
+                            <select id="filter-paciente" class="input-styled" style="max-width: 400px;">
+                                <option value="">-- Ver Globales --</option>
                                 <?php if (!empty($listaPacientes)): foreach($listaPacientes as $pac): ?>
                                     <?php $pid = is_object($pac) ? $pac->id_usuario : $pac['id_usuario']; ?>
-                                    <option value="<?= esc($pid) ?>" <?= (isset($selected_paciente) && $selected_paciente == $pid) ? 'selected' : '' ?>>
-                                        <?= esc($pac->nombre . ' ' . $pac->apellido . ' (' . $pac->email . ')') ?>
+                                    <option value="<?= esc($pid) ?>">
+                                        <?= esc($pac->nombre . ' ' . $pac->apellido) ?>
                                     </option>
                                 <?php endforeach; endif; ?>
                             </select>
-                        <div class="stat-icon" style="background:#e0f2fe; color:#0284c7;">
-                            <i class="fas fa-user-injured"></i>
-                        </div>
-                        <div class="stat-info">
-                            <div class="stat-value"><?= esc($totalPacientes) ?></div>
-                            <div class="stat-label">Pacientes Asignados</div>
-                        </div>
-                    </div>
-
-                    <!-- Contenedor de fila para alinear los gráficos horizontalmente -->
-                    <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start;">
-                        <div style="flex:1 1 520px; min-width:320px; background:#fff; padding:14px; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
-                            <h3 style="margin:0 0 10px; font-size:1rem; color:#334155;">Tareas completadas (últimos 28 días)</h3>
-                            <div class="chart-container"><canvas id="chart-daily"></canvas></div>
                         </div>
 
-                        <div style="flex:0 1 320px; min-width:260px; background:#fff; padding:14px; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
-                            <h3 style="margin:0 0 10px; font-size:1rem; color:#334155;">Distribución por tipo</h3>
-                            <div class="chart-container"><canvas id="chart-type"></canvas></div>
+                        <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                            <div style="flex: 2; min-width: 300px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                <h5 style="margin:0 0 15px 0; color:#64748b;">Evolución (Últimos 28 días)</h5>
+                                <div class="chart-container" style="height: 250px;">
+                                    <canvas id="chart-daily"></canvas>
+                                </div>
+                            </div>
+                            
+                            <div style="flex: 1; min-width: 250px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                <h5 style="margin:0 0 15px 0; color:#64748b;">Por Tipo de Tarea</h5>
+                                <div class="chart-container" style="height: 250px;">
+                                    <canvas id="chart-type"></canvas>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <!-- Gráfico semanal eliminado según solicitud -->
-                </div>
-            </div>
+                </div> 
+            </div> 
         </div>
 
         <div id="planes" class="entity-section">
@@ -286,6 +289,13 @@
                     <button class="btn-primary" onclick="openModal('planes', 'create')">
                         <i class="fas fa-plus"></i> Nuevo Plan
                     </button>
+                    <div class="stat-icon" style="background:#e0f2fe; color:#0284c7;">
+                            <i class="fas fa-user-injured"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-value"><?= esc($totalPacientes) ?></div>
+                        <div class="stat-label">Pacientes Asignados</div>
+                    </div>
                 </div>
                 <div class="search-bar">
                     <input type="text" placeholder="Buscar planes..." onkeyup="filterTable('planes')">
@@ -1503,4 +1513,4 @@
 
     </script>
 </body>
-</html> -
+</html> 
