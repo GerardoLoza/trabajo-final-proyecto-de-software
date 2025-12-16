@@ -83,7 +83,7 @@ class PlanController extends BaseController
                 $docModel->insert([
                     'id_paciente' => $plan->id_paciente,
                     'id_plan'     => $idPlan,
-                    'tipo'        => 'Epicrisis',
+                    'tipo'        => 'epicrisis',
                     'titulo'      => 'Epicrisis de Cierre - Plan #' . $idPlan,
                     'archivo'     => 'documentos/' . $newName,
                     'mime'        => $file->getClientMimeType(),

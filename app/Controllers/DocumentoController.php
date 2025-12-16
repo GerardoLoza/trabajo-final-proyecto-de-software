@@ -98,9 +98,11 @@ class DocumentoController extends BaseController
                 'tamano'      => $file->getSize(),
             ];
 
-            $docModel->insert($data);
-
-            return $this->response->setJSON(['success' => true, 'message' => 'Documento cargado correctamente.']);
+            if ($docModel->insert($data)) {
+                return $this->response->setJSON(['success' => true, 'message' => 'Documento cargado correctamente.']);
+            } else {
+                return $this->response->setJSON(['success' => false, 'message' => 'Error de validación', 'errors' => $docModel->errors()]);
+            }
 
         } catch (\Throwable $e) {
             return $this->response->setJSON(['success' => false, 'message' => 'Error del servidor: ' . $e->getMessage()]);
@@ -172,7 +174,7 @@ class DocumentoController extends BaseController
 
         // Validaciones de campos simples
         $rules = [
-            'tipo'   => 'required|in_list[receta,estudio,informe,otro]',
+            'tipo'   => 'required|in_list[receta,estudio,informe,otro, epicrisis]',
             'titulo' => 'required|min_length[3]|max_length[255]',
         ];
         if (! $this->validate($rules)) {
